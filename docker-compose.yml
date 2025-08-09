@@ -1,0 +1,118 @@
+services:
+  mongodb-dev:
+    image: mongo:8
+    container_name: nest-starter-mongodb-dev
+    hostname: nest-starter-mongodb-dev
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data_dev:/data/db
+      - ./mongodb/mongo-dev-keyfile:/etc/mongo-keyfile:ro
+    networks:
+      - nest-starter-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    command: mongod --wiredTigerCacheSizeGB 1 --auth --replSet rs0 --keyFile /etc/mongo-keyfile --bind_ip 127.0.0.1,nest-starter-mongodb-dev
+    env_file:
+      - ./.env.local
+
+  redis-dev:
+    image: redis:8-alpine
+    container_name: nest-starter-redis-dev
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data_dev:/data
+      - ./redis.dev.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - nest-starter-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    command: redis-server /usr/local/etc/redis/redis.conf
+    env_file:
+      - ./.env.local
+
+  # Tus file upload server
+  tus-server:
+    image: tusproject/tusd:latest
+    container_name: tus-server
+    ports:
+      - "${TUS_PORT:-8080}:8080"
+    volumes:
+      - tus_data:/srv/tusd/data
+    networks:
+      - nest-starter-network
+    environment:
+      - TUSD_BASE_PATH=/uploads
+      - TUSD_PATH=/files
+      - TUSD_DATA_STORE=/srv/tusd/data
+      - TUSD_UPLOAD_SIZE_LIMIT=104857600 # 100MB in bytes
+      - TUSD_CORS_ALLOW_ORIGIN=*
+      - TUSD_CORS_ALLOW_METHODS=POST,GET,OPTIONS,HEAD,PATCH,DELETE
+      - TUSD_CORS_ALLOW_HEADERS=*
+      - TUSD_CORS_EXPOSE_HEADERS=*
+    restart: unless-stopped
+
+  nest-starter-api-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: nest-starter-api-dev
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+      - nest_starter_data_dev:/usr/src/app/data
+    env_file:
+      - ./.env.local
+    depends_on:
+      # - mongodb-dev
+      # - redis-dev
+      - nest-starter-caddy
+      - tus-server
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    networks:
+      - nest-starter-network
+
+  nest-starter-caddy:
+    image: caddy:latest
+    container_name: nest-starter-caddy
+    ports:
+      - "4321:4321"
+      - "2019:2019"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./logs/caddy:/var/log/caddy
+
+    networks:
+      - nest-starter-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data_dev:
+  redis_data_dev:
+  caddy_data:
+  caddy_config:
+  nest_starter_data_dev:
+  tus_data:
+
+networks:
+  nest-starter-network:
+    driver: bridge

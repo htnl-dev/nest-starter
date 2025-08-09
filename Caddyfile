@@ -1,0 +1,24 @@
+# Enable debug mode for development
+{
+	debug
+	admin :2019
+}
+
+# Development server
+:4321 {
+    handle {
+        reverse_proxy nest-starter-api-dev:3000
+    }
+
+    handle /uploads/* {
+        reverse_proxy tus-server:8080
+    }
+
+    handle /files/* {
+        reverse_proxy tus-server:8080
+    }
+
+    log {
+        output file /var/log/caddy/dev-access.log
+    }   
+}
