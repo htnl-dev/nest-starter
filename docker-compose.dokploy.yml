@@ -1,0 +1,67 @@
+services:
+  # Tus file upload server
+  tus-server-prod:
+    image: tusproject/tusd:latest
+    container_name: nest-starter-tus-prod
+    ports:
+      - "${TUS_PORT:-8080}:8080"
+    volumes:
+      - tus_data_prod:/srv/tusd/data
+    networks:
+      - dokploy-network
+    environment:
+      - TUSD_BASE_PATH=/uploads
+      - TUSD_PATH=/files
+      - TUSD_DATA_STORE=/srv/tusd/data
+      - TUSD_UPLOAD_SIZE_LIMIT=104857600 # 100MB in bytes
+      - TUSD_CORS_ALLOW_ORIGIN=*
+      - TUSD_CORS_ALLOW_METHODS=POST,GET,OPTIONS,HEAD,PATCH,DELETE
+      - TUSD_CORS_ALLOW_HEADERS=*
+      - TUSD_CORS_EXPOSE_HEADERS=*
+      - TUSD_HOOKS_HTTP=http://nest-starter-api-prod:3000/webhooks/tus
+      - TUSD_HOOKS_HTTP_FORWARD_HEADERS=Authorization,X-Request-ID
+      - TUSD_HOOKS_ENABLED_EVENTS=pre-create,post-create,post-receive,pre-finish,post-finish,post-terminate
+    restart: unless-stopped
+    labels:
+      - "dokploy.enabled=true"
+      - "dokploy.name=nest-starter-tus-prod"
+      - "dokploy.type=service"
+
+  nest-starter-api-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: nest-starter-api-prod
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - nest_starter_data_prod:/usr/src/app/data
+    env_file:
+      - ./.env
+    environment:
+      - NODE_ENV=production
+      - TUS_SERVER_URL=http://tus-server-prod:8080
+    depends_on:
+      - tus-server-prod
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "dokploy.enabled=true"
+      - "dokploy.name=nest-starter-api-prod"
+      - "dokploy.type=application"
+
+volumes:
+  nest_starter_data_prod:
+  tus_data_prod:
+
+networks:
+  dokploy-network:
+    external: true

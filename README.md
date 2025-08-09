@@ -1,50 +1,133 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS Starter Template
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+[![NestJS](https://img.shields.io/badge/NestJS-v11-E0234E?style=for-the-badge&logo=nestjs)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com/)
+[![PM2](https://img.shields.io/badge/PM2-Ready-2B037A?style=for-the-badge&logo=pm2)](https://pm2.keymetrics.io/)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 📋 Description
 
-## Description
+A production-ready NestJS starter template with Docker, PM2, and best practices pre-configured. This template provides a solid foundation for building scalable Node.js applications with TypeScript.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### ✨ Features
 
-## Project setup
+- 🚀 **NestJS v11** - Progressive Node.js framework
+- 📝 **TypeScript** - Type safety and modern JavaScript features
+- 🐳 **Docker Ready** - Containerized development and deployment
+- ⚙️ **PM2 Configuration** - Production process management
+- 📚 **Swagger/OpenAPI** - Auto-generated API documentation
+- ✅ **Testing Setup** - Unit and E2E tests with Jest
+- 🎯 **ESLint & Prettier** - Code quality and formatting
+- 🔧 **Environment Configuration** - Secure configuration management
 
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Docker and Docker Compose (optional)
+- Git
+
+### Quick Project Name Change
+
+To quickly rename this project from `nest-starter` to your own project name, use these sed commands:
+
+### macOS/BSD:
 ```bash
-$ npm install
+# Replace in all relevant files
+find . -type f \( -name "*.json" -o -name "*.yml" -o -name "*.js" -o -name "Caddyfile" \) \
+  -not -path "./node_modules/*" \
+  -not -path "./.git/*" \
+  -exec sed -i '' 's/nest-starter/your-project-name/g' {} +
 ```
 
-## Compile and run the project
-
+### Linux:
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Replace in all relevant files
+find . -type f \( -name "*.json" -o -name "*.yml" -o -name "*.js" -o -name "Caddyfile" \) \
+  -not -path "./node_modules/*" \
+  -not -path "./.git/*" \
+  -exec sed -i 's/nest-starter/your-project-name/g' {} +
 ```
 
-## Run tests
+### Files that will be updated:
+- `package.json` - Project name
+- `package-lock.json` - Package lock references
+- `docker-compose.yml` - Container and image names
+- `ecosystem.config.js` - PM2 app name
+- `Caddyfile` - Domain configuration
+
+**Note:** After renaming, run `npm install` to update package-lock.json properly.
+
+## 📦 Installation
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/nest-starter.git
+cd nest-starter
+
+# Install dependencies
+npm install
+```
+
+### Docker Setup
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# Application
+NODE_ENV=development
+PORT=3000
+
+# Database
+DATABASE_URL=mongodb://localhost:27017/nest-starter
+
+# API Documentation
+SWAGGER_USER=admin
+SWAGGER_PASSWORD=changeme
+```
+
+## 💻 Development
+
+```bash
+# Development with hot reload
+npm run start:dev
+
+# Development with debug
+npm run start:debug
+
+# Production build
+npm run build
+npm run start:prod
+
+# Format code
+npm run format
+
+# Lint code
+npm run lint
+```
+
+### API Documentation
+
+Swagger documentation is available at:
+- Local: http://localhost:3000/api
+- Production: https://your-domain.com/api
+
+## 🧪 Testing
 
 ```bash
 # unit tests
@@ -57,42 +140,102 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Deployment
+## 🚢 Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Using PM2
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Start application with PM2
+pm2 start ecosystem.config.js
+
+# Monitor
+pm2 monit
+
+# Reload with zero downtime
+pm2 reload all
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Using Docker
 
-## Resources
+```bash
+# Build production image
+docker build -t nest-starter:latest .
 
-Check out a few resources that may come in handy when working with NestJS:
+# Run container
+docker run -d \
+  --name nest-app \
+  -p 3000:3000 \
+  --env-file .env \
+  nest-starter:latest
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Docker Compose Production
 
-## Support
+```bash
+# Deploy with Docker Compose
+docker-compose -f docker-compose.yml up -d
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Scale horizontally
+docker-compose up -d --scale app=3
+```
 
-## Stay in touch
+## 📁 Project Structure
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```
+nest-starter/
+├── src/
+│   ├── main.ts              # Application entry point
+│   ├── app.module.ts        # Root module
+│   ├── app.controller.ts    # Root controller
+│   └── app.service.ts       # Root service
+├── test/
+│   ├── app.e2e-spec.ts      # E2E tests
+│   └── jest-e2e.json         # Jest E2E configuration
+├── docker-compose.yml        # Docker Compose configuration
+├── Dockerfile               # Docker image definition
+├── ecosystem.config.js      # PM2 configuration
+├── Caddyfile               # Caddy server configuration
+└── package.json            # Project metadata and scripts
+```
 
-## License
+## 🛠️ Available Scripts
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Script | Description |
+|--------|-------------|
+| `npm run start` | Start application |
+| `npm run start:dev` | Start in watch mode |
+| `npm run start:debug` | Start with debugger |
+| `npm run start:prod` | Start production build |
+| `npm run build` | Build application |
+| `npm run format` | Format code with Prettier |
+| `npm run lint` | Lint code with ESLint |
+| `npm run test` | Run unit tests |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:cov` | Generate test coverage |
+| `npm run test:e2e` | Run E2E tests |
+
+## 📚 Resources
+
+- [NestJS Documentation](https://docs.nestjs.com)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+- [PM2 Documentation](https://pm2.keymetrics.io/docs/)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is [MIT licensed](LICENSE).
+
+## 🙏 Acknowledgments
+
+- Built with [NestJS](https://nestjs.com/)
+- Inspired by best practices from the NestJS community
