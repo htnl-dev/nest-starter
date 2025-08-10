@@ -76,8 +76,8 @@ services:
     env_file:
       - ./.env.local
     depends_on:
-      # - nest-starter-mongodb-dev
-      # - nest-starter-redis-dev
+      - nest-starter-mongodb-dev
+      - nest-starter-redis-dev
       - nest-starter-caddy
       - nest-starter-tus-dev
     deploy:
