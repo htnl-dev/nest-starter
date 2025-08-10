@@ -7,7 +7,7 @@
 
 ## 📋 Description
 
-A production-ready NestJS starter template with Docker, PM2, and best practices pre-configured. This template provides a solid foundation for building scalable Node.js applications with TypeScript. It also implements abstract crud classes
+A production-ready NestJS starter template with Docker, PM2, and best practices pre-configured. This template provides a solid foundation for building scalable Node.js applications with TypeScript. It includes powerful abstract CRUD services and entities that accelerate development by providing consistent patterns for data operations.
 
 ### ✨ Features
 
@@ -19,6 +19,10 @@ A production-ready NestJS starter template with Docker, PM2, and best practices 
 - ✅ **Testing Setup** - Unit and E2E tests with Jest
 - 🎯 **ESLint & Prettier** - Code quality and formatting
 - 🔧 **Environment Configuration** - Secure configuration management
+- 🏗️ **Abstract CRUD System** - Reusable base classes for entities, services, and controllers
+- 🔍 **Advanced Querying** - Built-in pagination, search, sorting, and filtering
+- 🏷️ **Slug Support** - Automatic slug generation for SEO-friendly URLs
+- 💾 **MongoDB Integration** - Mongoose with transaction support and retry logic
 
 ## 🚀 Quick Start
 
@@ -231,6 +235,303 @@ nest-starter/
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:cov` | Generate test coverage |
 | `npm run test:e2e` | Run E2E tests |
+
+## 🏗️ Abstract CRUD System
+
+This template includes a powerful abstract CRUD system that provides reusable base classes for entities, services, and controllers. This system accelerates development by providing consistent patterns for data operations with built-in features like pagination, search, sorting, and transaction support.
+
+### 📋 Core Components
+
+#### Base Entity (`CrudEntity`)
+
+The base abstract entity provides common fields for all entities:
+
+```typescript
+import { Schema } from '@nestjs/mongoose';
+import { CrudEntity } from './src/crud/entities/crud.entity';
+
+@Schema()
+export class Product extends CrudEntity {
+  // already auto inherited name, description and metadata
+  // Your custom fields here
+  @Prop()
+  sku: string;
+ 
+}
+```
+
+**Fields included:**
+- `user`: Reference to the user who created the entity (optional)
+- `name`: Entity name (optional)
+- `description`: Entity description (optional) 
+- `metadata`: Flexible key-value storage (optional)
+
+#### Base Service (`AbstractCrudService`)
+
+The abstract service provides complete CRUD operations with MongoDB transaction support ensuring that an operation wholly succees or fails:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { AbstractCrudService } from './src/crud/services/crud.service';
+import { MyEntity } from './entities/my.entity';
+import { CreateMyDto } from './dto/create-my.dto';
+import { UpdateMyDto } from './dto/update-my.dto';
+
+@Injectable()
+export class Sale extends AbstractCrudService<
+  Product,
+  CreateProductDto,
+  UpdateProductDto
+> {
+  constructor(@InjectModel(MyEntity.name) model: Model<MyEntity>) {
+    super(connection, model);
+  }
+
+  // Override populator if needed
+  get populator(): string[] {
+    return ['user', 'customRelation'];
+  }
+}
+```
+
+#### Base Controller (`AbstractCrudController`)
+
+The abstract controller provides standard REST endpoints:
+
+```typescript
+import { Controller } from '@nestjs/common';
+import { AbstractCrudController } from './src/crud/controllers/crud.controller';
+import { MyEntity } from './entities/my.entity';
+import { MyService } from './services/my.service';
+import { CreateMyDto } from './dto/create-my.dto';
+import { UpdateMyDto } from './dto/update-my.dto';
+
+@Controller('sales')
+export class Sale extends AbstractCrudController<
+  MyEntity,
+  CreateMyDto,
+  UpdateMyDto
+> {
+  constructor(private readonly myService: MyService) {
+    super(myService);
+  }
+}
+```
+This automatically makes the following endpoints availabe
+POST `/sales`
+GET `/sales`
+GET `/sales/:id`
+PATCH `/sales/:id`
+DELETE `/sales/:id`
+
+### 🔧 Service Methods Explained
+
+#### Standard CRUD Operations
+
+| Method | Description | Usage |
+|--------|-------------|--------|
+| `create(dto, user?, session?)` | Creates a new entity | Basic entity creation |
+| `findAll(query, session?)` | Retrieves entities with pagination | List entities with filters |
+| `findOne(id, session?)` | Retrieves a single entity | Get entity by ID |
+| `remove(id, session?)` | Deletes an entity | Delete entity |
+
+#### Update Operations
+
+##### `update(id, updateDto, session?)`
+- **Purpose**: Standard partial update of entity fields
+- **When to use**: When you want to update only specific fields that are included in your UpdateDto
+- **Behavior**: Only updates fields present in the DTO, ignores undefined/null values
+- **Example**:
+```typescript
+// Only updates description and metadata fields
+await service.update(id, { 
+  description: 'New description',
+  metadata: { updated: true }
+});
+```
+
+##### `forceUpdate(id, update, session?)`  
+- **Purpose**: Direct database update with any fields
+- **When to use**: When you need to update fields not included in your UpdateDto or perform complex updates
+- **Behavior**: Directly passes the update object to MongoDB's `findByIdAndUpdate`
+- **Example**:
+```typescript
+// Can update any field, even those not in UpdateDto
+await service.forceUpdate(id, { 
+  customField: 'new value',
+  'metadata.nested.field': 'deep update',
+  lastModified: new Date()
+});
+```
+
+##### `increment(id, fields, session?)`
+- **Purpose**: Atomically increment/decrement numeric fields
+- **When to use**: For counters, scores, quantities, or any numeric operations that need to be atomic
+- **Behavior**: Uses MongoDB's `$inc` operator for atomic operations
+- **Example**:
+```typescript
+// Increment view count and decrease stock
+await service.increment(id, { 
+  viewCount: 1,
+  stockQuantity: -1,
+  'metrics.totalClicks': 5
+});
+```
+
+### 🏷️ Slug-Aware Entities
+
+For entities that need SEO-friendly URLs, extend the `SlugCrudEntity`:
+
+#### Slug Entity
+```typescript
+import { Schema } from '@nestjs/mongoose';
+import { SlugCrudEntity } from './src/crud/entities/slug-crud.entity';
+
+@Schema()
+export class Product extends SlugCrudEntity {
+ // auto ge'ts a crud generated based on the product name
+}
+```
+
+#### Slug Service  
+```typescript
+import { Injectable } from '@nestjs/common';
+import { SlugAwareCrudService } from './src/crud/services/slug-crud.service';
+
+@Injectable()
+export class MySlugService extends SlugAwareCrudService<
+  MySlugEntity,
+  CreateMySlugDto,
+  UpdateMySlugDto
+> {
+  constructor(@InjectModel(MySlugEntity.name) model: Model<MySlugEntity>) {
+    super(connection, model);
+  }
+
+  // Override slug source field (defaults to 'name')
+  slugSource = 'sku';
+}
+```
+
+**Slug features:**
+- Automatic slug generation from a source field (default: `name`)
+- Unique slug enforcement with automatic suffixes
+- Find by ID or slug: `findOne('my-slug')` or `findOne('507f1f77bcf86cd799439011')`
+
+### 🔍 Advanced Querying
+
+The `findAll` method supports comprehensive querying options:
+
+#### Query Parameters
+
+```typescript
+const query = {
+  // Text search across indexed fields
+  search: 'search term',
+  
+  // Pagination
+  page: 1,
+  limit: 10,
+  
+  // Sorting (field:order format)
+  sort: 'createdAt:desc,name:asc',
+  
+  // Field filtering (supports MongoDB ObjectIds)
+  user: '507f1f77bcf86cd799439011',
+  status: 'active',
+  
+  // Metadata filtering
+  metadata: { category: 'tech' }
+};
+
+const result = await service.findAll(query);
+```
+
+#### Response Format
+
+```typescript
+{
+  data: MyEntity[],
+  pagination: {
+    total: 100,
+    page: 1, 
+    limit: 10,
+    totalPages: 10
+  }
+}
+```
+
+### 💾 Transaction Support
+
+All service methods support MongoDB transactions via the optional `session` parameter:
+
+```typescript
+const session = await this.connection.startSession();
+session.startTransaction();
+
+try {
+  const entity1 = await service1.create(dto1, user, session);
+  const entity2 = await service2.update(id, dto2, session);
+  
+  await session.commitTransaction();
+} catch (error) {
+  await session.abortTransaction();
+  throw error;
+} finally {
+  await session.endSession();
+}
+```
+
+The abstract service includes automatic retry logic and session management through the `withSession` method.
+
+### 📝 DTOs and Validation
+
+#### Base DTOs
+
+**CreateCrudDto:**
+```typescript
+{
+  name: string;              // Required
+  description?: string;      // Optional
+  user?: Types.ObjectId;     // Optional (auto-set from auth)
+  metadata?: Record<string, any>; // Optional
+}
+```
+
+**UpdateCrudDto:**
+```typescript
+{
+  description?: string;      // Optional
+  metadata?: Record<string, any>; // Optional
+}
+```
+
+**QueryDto:**
+```typescript
+{
+  search?: string;           // Text search
+  page?: number;             // Page number (min: 1)
+  limit?: number;            // Items per page (1-100)  
+  sort?: string;             // Sort format: "field:order"
+  [key: string]: any;        // Additional filters
+  metadata?: Record<string, any>; // Metadata filters
+}
+```
+
+### 🎯 Best Practices
+
+1. **Always extend base classes** - Don't recreate CRUD functionality
+2. **Use transactions for related operations** - Pass session between service calls
+3. **Override populators** - Specify relationships to populate in service
+4. **Leverage slug entities** - For public-facing resources needing SEO URLs
+5. **Use appropriate update methods**:
+   - `update()` for standard user input validation
+   - `forceUpdate()` for system-level updates
+   - `increment()` for atomic numeric operations
+6. **Implement proper validation** - Extend base DTOs with your validation rules
+7. **Configure text search** - Add text indexes to your schemas for search functionality
 
 ## 📚 Resources
 
