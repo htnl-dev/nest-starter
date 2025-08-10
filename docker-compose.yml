@@ -1,5 +1,5 @@
 services:
-  mongodb-dev:
+  nest-starter-mongodb-dev:
     image: mongo:8
     container_name: nest-starter-mongodb-dev
     hostname: nest-starter-mongodb-dev
@@ -20,7 +20,7 @@ services:
     env_file:
       - ./.env.local
 
-  redis-dev:
+  nest-starter-redis-dev:
     image: redis:8-alpine
     container_name: nest-starter-redis-dev
     ports:
@@ -41,9 +41,9 @@ services:
       - ./.env.local
 
   # Tus file upload server
-  tus-server:
+  nest-starter-tus-dev:
     image: tusproject/tusd:latest
-    container_name: tus-server
+    container_name: nest-starter-tus-dev
     ports:
       - "${TUS_PORT:-8080}:8080"
     volumes:
@@ -68,7 +68,7 @@ services:
       target: development
     container_name: nest-starter-api-dev
     ports:
-      - "${API_PORT:-3000}:3000"
+      - "${API_PORT:-5050}:3000"
     volumes:
       - ./:/usr/src/app
       - /usr/src/app/node_modules
@@ -76,10 +76,10 @@ services:
     env_file:
       - ./.env.local
     depends_on:
-      # - mongodb-dev
-      # - redis-dev
+      # - nest-starter-mongodb-dev
+      # - nest-starter-redis-dev
       - nest-starter-caddy
-      - tus-server
+      - nest-starter-tus-dev
     deploy:
       resources:
         limits:
