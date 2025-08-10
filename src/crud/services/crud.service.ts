@@ -199,7 +199,11 @@ export class AbstractCrudService<
 
   findOne(id: string | Types.ObjectId, session?: ClientSession) {
     return this.withSession(session, async (session) => {
-      return this.model.findById(id).populate(this.populator).session(session);
+      const item = await this.model.findById(id).populate(this.populator).session(session);
+      if (!item) {
+        throw new NotFoundException(`Item not found`);
+      }
+      return item;
     });
   }
 

@@ -60,17 +60,8 @@ export abstract class SlugAwareCrudService<
         return super.findOne(idOrSlug, session);
       }
 
-      idOrSlug = idOrSlug as string;
-      const query: Record<string, any> = { slug: idOrSlug };
-
-      if (idOrSlug.includes('/')) {
-        const [workspaceId, slug] = idOrSlug.split('/');
-        query.slug = slug;
-        query.workspace = new Types.ObjectId(workspaceId);
-      }
-
       const result = await this.model
-        .findOne(query)
+        .findOne({ slug: idOrSlug })
         .populate(this.populator)
         .session(session);
 
