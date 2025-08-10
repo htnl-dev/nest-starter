@@ -7,7 +7,7 @@
 
 ## 📋 Description
 
-A production-ready NestJS starter template with Docker, PM2, and best practices pre-configured. This template provides a solid foundation for building scalable Node.js applications with TypeScript.
+A production-ready NestJS starter template with Docker, PM2, and best practices pre-configured. This template provides a solid foundation for building scalable Node.js applications with TypeScript. It also implements abstract crud classes
 
 ### ✨ Features
 
@@ -59,8 +59,8 @@ find . -type f \( -name "*.json" -o -name "*.yml" -o -name "*.js" -o -name "Cadd
 
 **Note:** After renaming, run `npm install` to update package-lock.json properly.
 
-## 📦 Installation
 
+## 📦 Installation
 ### Local Development
 
 ```bash
@@ -72,6 +72,19 @@ cd nest-starter
 npm install
 ```
 
+
+### Generate Mongodb auth keyfile properly
+```sh
+mkdir mongodb
+openssl rand -base64 756 > ./mongodb/mongo-dev-keyfile
+chmod 600 ./mongodb/mongo-dev-keyfile
+```
+
+### Generate redis conf file
+```sh 
+echo "requirepass devredispass\nappendonly yes" > ./redis.dev.conf
+```
+
 ### Docker Setup
 
 ```bash
@@ -80,6 +93,11 @@ docker-compose up -d
 
 # View logs
 docker-compose logs -f app
+```
+
+### Init MongoDB replica
+```sh
+sh ./scripts/init-replica.sh --env dev
 ```
 
 ## 🔧 Configuration
