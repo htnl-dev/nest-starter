@@ -7,7 +7,7 @@ services:
       - "${MONGODB_PORT:-27017}:27017"
     volumes:
       - mongodb_data_dev:/data/db
-      - ./mongodb/mongo-dev-keyfile:/etc/mongo-keyfile:ro
+      - ./mongodb/mongo-local-dev-keyfile:/etc/mongo-keyfile:ro
     networks:
       - nest-starter-network
     deploy:

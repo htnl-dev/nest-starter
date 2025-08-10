@@ -76,8 +76,8 @@ npm install
 ### Generate Mongodb auth keyfile properly
 ```sh
 mkdir mongodb
-openssl rand -base64 756 > ./mongodb/mongo-dev-keyfile
-chmod 600 ./mongodb/mongo-dev-keyfile
+openssl rand -base64 756 > ./mongodb/mongo-local-dev-keyfile
+chmod 600 ./mongodb/mongo-local-dev-keyfile
 ```
 
 ### Generate redis conf file
