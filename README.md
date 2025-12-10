@@ -533,6 +533,69 @@ The abstract service includes automatic retry logic and session management throu
 6. **Implement proper validation** - Extend base DTOs with your validation rules
 7. **Configure text search** - Add text indexes to your schemas for search functionality
 
+## 🔐 Logto Authentication Module
+
+This template includes a comprehensive Logto Management API integration for authentication and authorization.
+
+### Configuration
+
+Add the following environment variables:
+
+```env
+LOGTO_ENDPOINT=https://your-tenant.logto.app
+LOGTO_TENANT_ID=your-tenant-id
+LOGTO_APP_ID=your-app-id
+LOGTO_APP_SECRET=your-app-secret
+LOGTO_API_RESOURCE_ID=your-api-resource-id
+LOGTO_ORGANIZATION_ID=your-organization-id
+```
+
+### Services
+
+The Logto module provides grouped services by functionality:
+
+| Service | Description |
+|---------|-------------|
+| `LogtoUsersService` | User management (CRUD, suspension, organization membership) |
+| `RolesService` | Role management with scope assignment |
+| `PermissionsService` | Permission/scope management |
+
+### Usage
+
+```typescript
+import { LogtoModule, LogtoAuthGuard, Public, Scopes, GetCurrentUser } from './logto';
+
+// Import the module
+@Module({
+  imports: [LogtoModule],
+})
+export class AppModule {}
+
+// Apply guard globally or per-controller
+@UseGuards(LogtoAuthGuard)
+@Controller('protected')
+export class ProtectedController {
+
+  @Public() // Mark route as public
+  @Get('public')
+  publicRoute() {}
+
+  @Scopes('read:users') // Require specific permissions
+  @Get('admin')
+  adminRoute(@GetCurrentUser() user: CurrentUser) {
+    return user;
+  }
+}
+```
+
+### Decorators
+
+| Decorator | Description |
+|-----------|-------------|
+| `@Public()` | Marks a route as publicly accessible |
+| `@Scopes(...scopes)` | Requires specific permission scopes |
+| `@GetCurrentUser()` | Injects the authenticated user into route handler |
+
 ## 📚 Resources
 
 - [NestJS Documentation](https://docs.nestjs.com)
