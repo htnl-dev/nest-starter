@@ -8,9 +8,9 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Connection, Model, Types } from 'mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { CurrentUser } from '../types/current-user.type';
-import { TransitionTable, TransitionEffect } from '../types/fsm.types';
-import { createSimpleTransitionTable } from '../utils/fsm.utils';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { createActor, createMachine, AnyStateMachine } from 'xstate';
+import { InvalidTransitionException } from '../errors/fsm.errors';
 
 export interface StatusUpdateDto {
   status: string;
@@ -19,16 +19,17 @@ export interface StatusUpdateDto {
   user?: string;
 }
 
+export type TransitionEffect<TContext = unknown> = (
+  context: TContext,
+  session?: ClientSession,
+) => Promise<void>;
+
 export abstract class AuditableService<
   Entity extends GenericAuditableDocument,
   CreateDto extends object = object,
   UpdateDto extends object = object,
   TStatus extends string = string,
 > extends AbstractCrudService<Entity, CreateDto, UpdateDto> {
-  private transitionValidator?: ReturnType<
-    typeof createSimpleTransitionTable<TStatus>
-  >;
-
   constructor(
     @InjectConnection() protected readonly connection: Connection,
     @InjectModel(CrudEntity.name) protected readonly model: Model<Entity>,
@@ -39,11 +40,11 @@ export abstract class AuditableService<
   }
 
   /**
-   * Define allowed transitions. Override in subclass.
-   * Return empty object for lenient mode (any transition allowed).
+   * Override to provide an XState machine for transition validation.
+   * Return undefined for lenient mode (any transition allowed).
    */
-  get transitions(): TransitionTable<TStatus> {
-    return {} as TransitionTable<TStatus>;
+  get machine(): AnyStateMachine | undefined {
+    return undefined;
   }
 
   /**
@@ -53,18 +54,24 @@ export abstract class AuditableService<
     return {};
   }
 
-  private getValidator() {
-    if (!this.transitionValidator) {
-      this.transitionValidator = createSimpleTransitionTable(this.transitions);
-    }
-    return this.transitionValidator;
-  }
-
   /**
    * Check if transitions are enforced (strict mode)
    */
   get isStrictMode(): boolean {
-    return Object.keys(this.transitions).length > 0;
+    return this.machine !== undefined;
+  }
+
+  /**
+   * Validate transition using XState machine
+   */
+  private canTransition(from: TStatus, to: TStatus): boolean {
+    if (!this.machine) return true;
+
+    const actor = createActor(this.machine, {
+      snapshot: this.machine.resolveState({ value: from, context: {} }),
+    });
+
+    return actor.getSnapshot().can({ type: to });
   }
 
   /**
@@ -92,8 +99,8 @@ export abstract class AuditableService<
       const nextStatus = dto.status as TStatus;
 
       // Validate transition if in strict mode
-      if (this.isStrictMode) {
-        this.getValidator().validate(currentStatus, nextStatus);
+      if (this.isStrictMode && !this.canTransition(currentStatus, nextStatus)) {
+        throw new InvalidTransitionException(currentStatus, nextStatus);
       }
 
       const auditEntry: AuditState = {
@@ -148,4 +155,24 @@ export abstract class AuditableService<
       return this.findOne(entity._id, session);
     });
   }
+}
+
+/**
+ * Helper to create an XState machine for status transitions
+ */
+export function createStatusMachine<TStatus extends string>(config: {
+  id: string;
+  initial: TStatus;
+  states: {
+    [K in TStatus]: {
+      on?: { [event: string]: TStatus };
+      type?: 'final';
+    };
+  };
+}) {
+  return createMachine({
+    id: config.id,
+    initial: config.initial,
+    states: config.states as Record<string, object>,
+  });
 }
