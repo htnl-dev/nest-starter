@@ -7,4 +7,5 @@ export * from './types/logto.types';
 export * from './services/users.service';
 export * from './services/roles.service';
 export * from './services/permissions.service';
+export * from './services/organizations.service';
 export * from './services/base-logto.service';

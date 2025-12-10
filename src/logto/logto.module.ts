@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LogtoUsersService } from './services/users.service';
 import { RolesService } from './services/roles.service';
 import { PermissionsService } from './services/permissions.service';
+import { OrganizationsService } from './services/organizations.service';
 import { LogtoAuthGuard } from './guards/logto-auth.guard';
 import type { LogtoConfig } from './interfaces/logto-config.interface';
 
@@ -32,6 +33,7 @@ import type { LogtoConfig } from './interfaces/logto-config.interface';
     LogtoUsersService,
     RolesService,
     PermissionsService,
+    OrganizationsService,
     LogtoAuthGuard,
   ],
   exports: [
@@ -39,6 +41,7 @@ import type { LogtoConfig } from './interfaces/logto-config.interface';
     LogtoUsersService,
     RolesService,
     PermissionsService,
+    OrganizationsService,
     LogtoAuthGuard,
   ],
 })
