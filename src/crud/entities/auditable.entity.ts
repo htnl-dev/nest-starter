@@ -1,17 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { CrudEntity } from './crud.entity';
-import { FsmProcessingState } from '../enums/fsm.enums';
 
-@Schema({
-  _id: false,
-  timestamps: true,
-})
+@Schema({ _id: false, timestamps: true })
 export class AuditState {
   @Prop({ required: true })
   status: string;
 
-  @Prop({ required: true, default: FsmProcessingState.START })
+  @Prop({ required: true, default: 'complete' })
   step: string;
 
   @Prop({ required: true, default: 0 })
@@ -21,7 +17,7 @@ export class AuditState {
   description: string;
 
   @Prop({ type: Object, required: false })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 
   @Prop({ type: String, ref: 'User', required: false })
   user?: string;
@@ -39,9 +35,6 @@ export abstract class AuditableEntity extends CrudEntity {
 
   @Prop({ type: [AuditStateSchema], default: [] })
   stateTransitions: AuditState[];
-
-  // Virtual property to get compacted audit trail
-  auditTrail?: AuditState[];
 }
 
 export type GenericAuditableDocument = AuditableEntity & {

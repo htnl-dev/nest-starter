@@ -6,22 +6,29 @@ import {
 import { CrudEntity } from '../entities/crud.entity';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Connection, Model, Types } from 'mongoose';
-import { UpdateAuditableStatusDto } from '../dto/update-auditable-status.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { CurrentUser } from '../types/current-user.type';
-import { Transition, TransitionTable } from '../types/fsm.types';
-import {
-  FinalStateTransitionException,
-  InvalidTransitionException,
-} from '../errors/fsm.errors';
-import { FsmMode } from '../enums/fsm.enums';
+import { TransitionTable, TransitionEffect } from '../types/fsm.types';
+import { createSimpleTransitionTable } from '../utils/fsm.utils';
 import { SchedulerRegistry } from '@nestjs/schedule';
+
+export interface StatusUpdateDto {
+  status: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  user?: string;
+}
 
 export abstract class AuditableService<
   Entity extends GenericAuditableDocument,
   CreateDto extends object = object,
   UpdateDto extends object = object,
+  TStatus extends string = string,
 > extends AbstractCrudService<Entity, CreateDto, UpdateDto> {
+  private transitionValidator?: ReturnType<
+    typeof createSimpleTransitionTable<TStatus>
+  >;
+
   constructor(
     @InjectConnection() protected readonly connection: Connection,
     @InjectModel(CrudEntity.name) protected readonly model: Model<Entity>,
@@ -31,114 +38,113 @@ export abstract class AuditableService<
     super(connection, model, eventEmitter, schedulerRegistry);
   }
 
-  abstract get transitions(): TransitionTable<Entity>;
-
-  get fsmMode(): FsmMode {
-    // if has transition table, return strict
-    if (Object.keys(this.transitions).length > 0) {
-      return FsmMode.STRICT as unknown as FsmMode;
-    }
-    return FsmMode.LENIENT as unknown as FsmMode;
+  /**
+   * Define allowed transitions. Override in subclass.
+   * Return empty object for lenient mode (any transition allowed).
+   */
+  get transitions(): TransitionTable<TStatus> {
+    return {} as TransitionTable<TStatus>;
   }
 
-  getTransition(
-    currentStatus: Entity['status'],
-    nextStatus: Entity['status'],
-  ): Transition<Entity> {
-    const transition = this.transitions[currentStatus]?.find(
-      (transition) => transition.to === nextStatus,
-    );
-    if (!transition) {
-      if (this.transitions[currentStatus]) {
-        // allows transitions, but not this one
-        throw new InvalidTransitionException(currentStatus, nextStatus);
-      }
-      // doesn't allow transition at all, considered a final state
-      throw new FinalStateTransitionException(currentStatus, nextStatus);
-    }
-    return {
-      from: currentStatus,
-      ...transition,
-    };
+  /**
+   * Define transition effects. Override in subclass.
+   */
+  get effects(): Partial<Record<TStatus, TransitionEffect<Entity>>> {
+    return {};
   }
 
+  private getValidator() {
+    if (!this.transitionValidator) {
+      this.transitionValidator = createSimpleTransitionTable(this.transitions);
+    }
+    return this.transitionValidator;
+  }
+
+  /**
+   * Check if transitions are enforced (strict mode)
+   */
+  get isStrictMode(): boolean {
+    return Object.keys(this.transitions).length > 0;
+  }
+
+  /**
+   * Get the current audit state
+   */
   getCurrentState(entity: Entity): AuditState | undefined {
-    if (!entity.auditTrail) {
-      return undefined;
-    }
-    return entity.auditTrail?.at(-1);
+    return entity.stateTransitions?.at(-1);
   }
 
-  updateStatus<T extends UpdateAuditableStatusDto>(
+  /**
+   * Update entity status with audit trail
+   */
+  async updateStatus(
     id: string | Types.ObjectId,
-    updateDto: T,
+    dto: StatusUpdateDto,
     session?: ClientSession,
   ) {
-    const { updates, ...stateTransition } = updateDto;
     return this.withSession(session, async (session) => {
-      let transition: Transition<Entity> | undefined;
-      const status = stateTransition.status;
-
-      // Get current entity to check current status
       const entity = await this.findOne(id, session);
       if (!entity) {
         throw new Error(`Entity not found: ${id.toString()}`);
       }
 
-      // Apply transition based on FSM mode
-      if (this.fsmMode === (FsmMode.STRICT as unknown as FsmMode)) {
-        // Validate that the transition is allowed
-        transition = this.getTransition(
-          entity.status as Entity['status'],
-          status as Entity['status'],
-        );
+      const currentStatus = entity.status as TStatus;
+      const nextStatus = dto.status as TStatus;
 
-        this.logger.log(
-          `Applying strict transition: ${String(entity.status)} -> ${String(status)}`,
-          { transition },
-        );
-      } else {
-        // Lenient mode - allow any transition
-        this.logger.log(
-          `Applying lenient transition: ${String(entity.status)} -> ${String(status)}`,
-        );
+      // Validate transition if in strict mode
+      if (this.isStrictMode) {
+        this.getValidator().validate(currentStatus, nextStatus);
       }
 
-      // Perform the update with optimistic locking via forceUpdate
-      const updatedEntity = await this.forceUpdate(
+      const auditEntry: AuditState = {
+        status: nextStatus,
+        step: 'complete',
+        iterations: 0,
+        description: dto.description || `Status changed to ${nextStatus}`,
+        metadata: dto.metadata,
+        user: dto.user,
+      };
+
+      const updated = await this.forceUpdate(
         id,
         {
-          status,
-          ...updates,
-          $push: { stateTransitions: stateTransition },
-        } as Partial<Entity & { $push?: any }>,
+          status: nextStatus,
+          $push: { stateTransitions: auditEntry },
+        } as unknown as Partial<Entity>,
         session,
       );
 
-      if (!updatedEntity) {
-        throw new Error(`Failed to update ${this.model.modelName}`);
+      // Execute transition effect if defined
+      const effect = this.effects[nextStatus];
+      if (effect && updated) {
+        await effect(updated, session);
       }
 
-      if (transition && transition.effect) {
-        await transition.effect(updatedEntity, session);
-      }
-
-      return updatedEntity;
+      return updated;
     });
   }
 
-  create(createDto: CreateDto, user?: CurrentUser, session?: ClientSession) {
+  /**
+   * Create with initial status audit entry
+   */
+  async create(
+    createDto: CreateDto,
+    user?: CurrentUser,
+    session?: ClientSession,
+  ) {
     return this.withSession(session, async (session) => {
       const entity = await super.create(createDto, user, session);
+
       await this.updateStatus(
         entity._id,
         {
           status: entity.status,
-          description: `${this.model.modelName} ${entity.status}`,
+          description: `${this.model.modelName} created`,
           user: user?._id,
         },
         session,
       );
+
       return this.findOne(entity._id, session);
     });
   }

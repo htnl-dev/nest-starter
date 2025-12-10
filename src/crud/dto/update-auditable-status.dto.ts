@@ -1,11 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
-import { AuditableEntity } from '../entities/auditable.entity';
-import { FsmProcessingState } from '../enums/fsm.enums';
 
-export class UpdateAuditableStatusDto<
-  T extends AuditableEntity = AuditableEntity,
-> {
+export class UpdateAuditableStatusDto {
   @ApiProperty({
     description: 'The status to update to',
     example: 'active',
@@ -14,16 +10,16 @@ export class UpdateAuditableStatusDto<
   @IsString()
   status: string;
 
-  @ApiProperty({
-    description: 'The description of the status update',
+  @ApiPropertyOptional({
+    description: 'Description of the status change',
     example: 'User has been activated',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
   @ApiPropertyOptional({
-    description: 'The user who updated the status (logto ID)',
+    description: 'User ID who made the change',
     example: 'user_abc123xyz',
   })
   @IsOptional()
@@ -31,32 +27,9 @@ export class UpdateAuditableStatusDto<
   user?: string;
 
   @ApiPropertyOptional({
-    description: 'The metadata of the status update',
+    description: 'Additional metadata',
   })
   @IsOptional()
   @IsObject()
-  metadata?: Record<string, any>;
-
-  @ApiPropertyOptional({
-    description: 'Optional step name for FSM state tracking',
-    example: FsmProcessingState.START,
-  })
-  @IsOptional()
-  @IsString()
-  step?: string;
-
-  @ApiPropertyOptional({
-    description: 'Optional iteration count for FSM state tracking',
-    example: 0,
-  })
-  @IsOptional()
-  iterations?: number;
-
-  updates?: Partial<Omit<T, 'status' | 'stateTransitions'>>;
+  metadata?: Record<string, unknown>;
 }
-
-/**
- * Type alias for UpdateAuditableStatusDto used in state transitions
- */
-export type UpdateStateDto<T extends AuditableEntity = AuditableEntity> =
-  UpdateAuditableStatusDto<T>;

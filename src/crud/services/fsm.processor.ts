@@ -1,127 +1,88 @@
 import { Job } from 'bullmq';
 import { AbstractProcessor } from './abstract.processor';
 import { AuditableService } from './auditable.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { FsmHandlerResponse } from '../types/fsm.types';
 import { GenericAuditableDocument } from '../entities/auditable.entity';
-import { Types } from 'mongoose';
-import { FsmJobState } from '../enums/fsm.enums';
 
+/**
+ * Abstract FSM processor for handling state machine jobs
+ */
 export abstract class AbstractFsmProcessor<
   T extends GenericAuditableDocument,
 > extends AbstractProcessor {
-  abstract key: string;
+  abstract entityKey: string;
+
+  protected maxRetries = 10;
+  protected baseDelay = 5000;
+  protected maxDelay = 300000;
 
   constructor(protected readonly service: AuditableService<T>) {
     super();
   }
 
-  abstract getJobState(entity: T): FsmJobState;
-  abstract handleJob(entity: T): Promise<FsmHandlerResponse<T>>;
-  abstract handleRequeueJob(entity: T, delay: number): Promise<void>;
+  /**
+   * Determine if entity can be processed
+   */
+  abstract canProcess(entity: T): boolean;
 
-  canProcess(entity: T): boolean {
-    const state = this.getJobState(entity);
+  /**
+   * Handle the job processing
+   */
+  abstract handleJob(entity: T): Promise<FsmHandlerResponse>;
 
-    switch (state) {
-      case FsmJobState.INITIAL:
-      case FsmJobState.PROCESSING:
-      case FsmJobState.STUCK:
-        return true;
-      case FsmJobState.FINAL:
-        return false;
-    }
-  }
+  /**
+   * Requeue job for later processing
+   */
+  abstract requeueJob(entityId: string, delay: number): Promise<void>;
 
-  shouldRequeue(entity: T): boolean {
-    const state = this.getJobState(entity);
-    switch (state) {
-      case FsmJobState.INITIAL:
-      case FsmJobState.PROCESSING:
-        return true;
-      case FsmJobState.FINAL:
-      case FsmJobState.STUCK:
-        return false;
-    }
+  /**
+   * Calculate exponential backoff delay
+   */
+  protected getDelay(retryCount: number): number {
+    const delay = this.baseDelay * Math.pow(2, retryCount);
+    return Math.min(delay, this.maxDelay);
   }
 
   async process(job: Job): Promise<void> {
-    const entityId = job.data[this.key] as string;
+    const entityId = job.data[this.entityKey] as string;
 
-    if (!entityId) {
-      throw new BadRequestException('Entity ID is required');
+    const entity = await this.service.findOne(entityId);
+    if (!entity) {
+      throw new NotFoundException(`Entity not found: ${entityId}`);
+    }
+
+    if (!this.canProcess(entity)) {
+      this.logger.log(
+        `Entity ${entityId} cannot be processed in current state`,
+      );
+      return;
     }
 
     try {
-      const entity = await this.service.findOne(entityId);
+      const response = await this.handleJob(entity);
 
-      if (!entity) {
-        throw new NotFoundException('Entity not found');
+      await this.service.updateStatus(entityId, {
+        status: response.nextStatus,
+        metadata: response.metadata,
+      });
+
+      if (response.delay) {
+        await this.requeueJob(entityId, response.delay);
       }
-
-      if (!this.canProcess(entity)) {
-        this.logger.warn(`Entity ${entityId} cannot be processed.`);
-        return;
-      }
-
-      const handlerResponse = await this.handleJob(entity);
-
-      const updatedEntity = await this.service.updateStatus(
-        entityId,
-        handlerResponse.statusUpdate,
-      );
-
-      await this.finishProcessing(updatedEntity, handlerResponse.delay);
     } catch (error) {
-      this.logger.error(`Error processing entity ${entityId}:`, error);
-      throw error;
-    }
-  }
+      const currentState = this.service.getCurrentState(entity);
+      const retryCount = currentState?.iterations ?? 0;
 
-  /**
-   * Maximum number of retry iterations before considering an entity stuck
-   * Can be overridden in subclasses if different limits are needed
-   */
-  protected get maxRetries(): number {
-    return 50;
-  }
-
-  /**
-   * Calculate exponential backoff delay with staggered retry pattern
-   * Staggers retries every 10 iterations to give old entities a second chance
-   * @param baseDelay - Base delay in milliseconds (default: 200ms)
-   * @param retryCount - Current retry iteration count
-   * @returns Delay in milliseconds, capped at 15 minutes
-   */
-  private getDelay(baseDelay = 200, retryCount: number = 0): number {
-    retryCount %= 10;
-    const max_delay = 1000 * 60 * 15; // 15 minutes
-    const getDelay = (count: number) => baseDelay * Math.pow(2, count - 1);
-    return Math.min(getDelay(retryCount), max_delay);
-  }
-
-  async finishProcessing(entity: T, baseDelay?: number): Promise<void> {
-    entity = entity as T & { _id: Types.ObjectId };
-    const entityId = entity._id.toString();
-    if (this.shouldRequeue(entity)) {
-      const fsmState = this.service.getCurrentState(entity)!;
-      const iterations = fsmState?.iterations || 0;
-
-      // Check if we've exceeded max retries
-      if (iterations >= this.maxRetries) {
-        this.logger.error(
-          `Entity ${entityId} exceeded max retries (${this.maxRetries}). Manual intervention required.`,
+      if (retryCount < this.maxRetries) {
+        const delay = this.getDelay(retryCount);
+        this.logger.warn(
+          `Retrying entity ${entityId} in ${delay}ms (attempt ${retryCount + 1})`,
         );
-        return;
+        await this.requeueJob(entityId, delay);
+      } else {
+        this.logger.error(`Entity ${entityId} exceeded max retries`, error);
       }
-
-      const delay = this.getDelay(baseDelay, iterations);
-      await this.handleRequeueJob(entity, delay);
-      this.logger.log(
-        `Entity ${entityId} requeued for processing in ${delay}ms (iteration ${iterations + 1}/${this.maxRetries})`,
-      );
-    } else {
-      this.logger.log(`Entity ${entityId} processed successfully`);
     }
   }
 }
