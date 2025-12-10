@@ -7,12 +7,6 @@ export class AuditState {
   @Prop({ required: true })
   status: string;
 
-  @Prop({ required: true, default: 'complete' })
-  step: string;
-
-  @Prop({ required: true, default: 0 })
-  iterations: number;
-
   @Prop({ required: true })
   description: string;
 
