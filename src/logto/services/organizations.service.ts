@@ -50,7 +50,8 @@ export class OrganizationsService extends BaseLogtoService<
         throw new Error('Failed to fetch organizations');
       }
 
-      const organizations = (response.data ?? []) as unknown as LogtoOrganization[];
+      const organizations = (response.data ??
+        []) as unknown as LogtoOrganization[];
       const logtoResponse: LogtoListResponse<LogtoOrganization> = {
         data: organizations,
         totalCount: response.response.headers.get('Total-Number')
@@ -261,11 +262,12 @@ export class OrganizationsService extends BaseLogtoService<
         throw new Error('Failed to fetch organization invitations');
       }
 
-      const invitations = (response.data ?? []) as unknown as LogtoOrganizationInvitation[];
+      const invitations = (response.data ??
+        []) as unknown as LogtoOrganizationInvitation[];
       const logtoResponse: LogtoListResponse<LogtoOrganizationInvitation> = {
         data: invitations,
         totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
+          ? parseInt(response.response.headers.get('Total-Number'), 10)
           : undefined,
       };
 

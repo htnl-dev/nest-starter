@@ -2,16 +2,16 @@ import { AbstractCrudService } from './crud.service';
 import { ClientSession, Connection, isValidObjectId, Types } from 'mongoose';
 import { Model } from 'mongoose';
 import { UpdateCrudDto } from '../dto/update-crud.dto';
-import { UserDocument } from 'src/user/entities/user.entity';
 import { slugify } from '../utils/slug.utils';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateSlugAwareCrudDto } from '../dto/create-slug-crud.dto';
 import { SlugCrudEntity } from '../entities/slug-crud.entity';
+import type { CurrentUser } from '../types/current-user.type';
 
 export abstract class SlugAwareCrudService<
-  Entity extends SlugCrudEntity,
+  Entity extends SlugCrudEntity & { __v: number },
   CreateDto extends { slug: string } = CreateSlugAwareCrudDto,
-  UpdateDto extends {} = UpdateCrudDto,
+  UpdateDto extends object = UpdateCrudDto,
 > extends AbstractCrudService<Entity, CreateDto, UpdateDto> {
   constructor(connection: Connection, model: Model<Entity>) {
     super(connection, model);
@@ -20,7 +20,9 @@ export abstract class SlugAwareCrudService<
   slugSource: string = 'name';
 
   protected getSlugFromSource(createCrudDto: CreateDto) {
-    const slugSource = createCrudDto[this.slugSource];
+    const slugSource = (createCrudDto as Record<string, unknown>)[
+      this.slugSource
+    ] as string | undefined;
     if (!slugSource) {
       throw new BadRequestException(`${this.slugSource} is not set`);
     }
@@ -28,7 +30,9 @@ export abstract class SlugAwareCrudService<
   }
 
   protected async generateUniqueSlug(createCrudDto: CreateDto) {
-    const slugSource = createCrudDto[this.slugSource];
+    const slugSource = (createCrudDto as Record<string, unknown>)[
+      this.slugSource
+    ] as string | undefined;
     if (!slugSource) {
       throw new BadRequestException(`${this.slugSource} is not set`);
     }
@@ -44,7 +48,7 @@ export abstract class SlugAwareCrudService<
 
   async create(
     createCrudDto: CreateDto,
-    user?: UserDocument,
+    user?: CurrentUser,
     session?: ClientSession,
   ) {
     return this.withSession(session, async (session) => {

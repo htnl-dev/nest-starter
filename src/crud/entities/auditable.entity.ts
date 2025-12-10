@@ -44,10 +44,7 @@ export abstract class AuditableEntity extends CrudEntity {
   auditTrail?: AuditState[];
 }
 
-export type GenericAuditableDocument<ID = string | Types.ObjectId> = Document<
-  unknown,
-  object,
-  AuditableEntity
-> &
-  AuditableEntity &
-  Required<{ _id: ID }> & { __v: number };
+export type GenericAuditableDocument = AuditableEntity & {
+  _id: string | Types.ObjectId;
+  __v: number;
+};

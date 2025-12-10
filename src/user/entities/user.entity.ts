@@ -67,7 +67,9 @@ export class User extends AuditableEntity {
 export const UserSchema = SchemaFactory.createForClass(User);
 
 UserSchema.virtual('fullName').get(function () {
-  const parts = [this.firstName, this.middleName, this.lastName].filter(Boolean);
+  const parts = [this.firstName, this.middleName, this.lastName].filter(
+    Boolean,
+  );
   return parts.join(' ');
 });
 

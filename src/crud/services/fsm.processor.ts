@@ -96,8 +96,7 @@ export abstract class AbstractFsmProcessor<
   private getDelay(baseDelay = 200, retryCount: number = 0): number {
     retryCount %= 10;
     const max_delay = 1000 * 60 * 15; // 15 minutes
-    const getDelay = (count: number) =>
-      baseDelay * Math.pow(2, count - 1);
+    const getDelay = (count: number) => baseDelay * Math.pow(2, count - 1);
     return Math.min(getDelay(retryCount), max_delay);
   }
 

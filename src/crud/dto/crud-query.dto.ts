@@ -90,17 +90,17 @@ export class QueryDto {
   })
   @IsObject()
   @IsOptional()
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }): unknown => {
     if (typeof value === 'string') {
       try {
-        return JSON.parse(value);
+        return JSON.parse(value) as Record<string, unknown>;
       } catch {
         return value;
       }
     }
     return value;
   })
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
 
   /**
    * Internal use only - preset MongoDB query from code

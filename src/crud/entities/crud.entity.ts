@@ -10,7 +10,13 @@ export type GenericCrudDocument = CrudEntity & { __v: number };
 
 @Schema()
 export abstract class CrudEntity {
-  @Prop({ type: String, ref: 'User', required: false, index: true, sparse: true })
+  @Prop({
+    type: String,
+    ref: 'User',
+    required: false,
+    index: true,
+    sparse: true,
+  })
   user?: string;
 
   @Prop()

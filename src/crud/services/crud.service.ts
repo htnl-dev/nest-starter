@@ -43,7 +43,7 @@ export abstract class AbstractCrudService<
     protected readonly schedulerRegistry?: SchedulerRegistry,
   ) {}
 
-  async onApplicationShutdown(signal?: string) {
+  onApplicationShutdown(signal?: string) {
     this.logger.log(
       `${this.constructor.name} shutting down on signal: ${signal}`,
     );
@@ -210,10 +210,16 @@ export abstract class AbstractCrudService<
       }
 
       if (createdAfter) {
-        mongoQuery.createdAt = { ...mongoQuery.createdAt, $gte: new Date(createdAfter) };
+        mongoQuery.createdAt = {
+          ...mongoQuery.createdAt,
+          $gte: new Date(createdAfter),
+        };
       }
       if (createdBefore) {
-        mongoQuery.createdAt = { ...mongoQuery.createdAt, $lte: new Date(createdBefore) };
+        mongoQuery.createdAt = {
+          ...mongoQuery.createdAt,
+          $lte: new Date(createdBefore),
+        };
       }
 
       // Build query
@@ -443,7 +449,7 @@ export abstract class AbstractCrudService<
         filter.__v = currentVersion;
       }
 
-      const updateObject = { ...update };
+      const updateObject: Record<string, any> = { ...update };
       if (currentVersion !== undefined && !updateObject.$inc?.__v) {
         updateObject.$inc = { ...updateObject.$inc, __v: 1 };
       }

@@ -12,14 +12,16 @@ import {
 import { AbstractCrudService } from '../services/crud.service';
 import { CreateCrudDto as AbstractCreateDto } from '../dto/create-crud.dto';
 import { UpdateCrudDto as AbstractUpdateDto } from '../dto/update-crud.dto';
-import { CrudEntity } from '../entities/crud.entity';
+import { GenericCrudDocument } from '../entities/crud.entity';
 import { QueryDto } from '../dto/crud-query.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import type { CurrentUser } from '../types/current-user.type';
 
 @Controller('crud')
-export class AbstractCrudController<
-  Entity extends CrudEntity,
+export abstract class AbstractCrudController<
+  Entity extends GenericCrudDocument,
   CreateDto extends AbstractCreateDto = AbstractCreateDto,
-  UpdateDto extends {} = AbstractUpdateDto,
+  UpdateDto extends object = AbstractUpdateDto,
 > {
   protected readonly logger = new Logger();
 
@@ -29,15 +31,16 @@ export class AbstractCrudController<
       CreateDto,
       UpdateDto
     >,
+    protected readonly eventEmitter?: EventEmitter2,
   ) {}
 
   @Post()
-  create(@Body() createCrudDto: CreateDto, user?: any) {
+  create(@Body() createCrudDto: CreateDto, user?: CurrentUser) {
     return this.crudService.create(createCrudDto, user);
   }
 
   @Get()
-  findAll(@Query() query: any & QueryDto) {
+  findAll(@Query() query: QueryDto) {
     return this.crudService.findAll(query);
   }
 
@@ -47,12 +50,8 @@ export class AbstractCrudController<
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateCrudDto: UpdateDto,
-    user?: any,
-  ) {
-    return this.crudService.update(id, updateCrudDto, user);
+  update(@Param('id') id: string, @Body() updateCrudDto: UpdateDto) {
+    return this.crudService.update(id, updateCrudDto);
   }
 
   @Delete(':id')

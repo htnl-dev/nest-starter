@@ -10,7 +10,6 @@ export class CreateCrudDto {
   @IsString()
   name: string;
 
-
   @ApiPropertyOptional({
     description: 'The description of the entity',
     example: 'This is a description of the entity',
@@ -20,7 +19,8 @@ export class CreateCrudDto {
   description?: string;
 
   @ApiPropertyOptional({
-    description: 'The user who created the entity. This is optional and will be set to the current authenticated user',
+    description:
+      'The user who created the entity. This is optional and will be set to the current authenticated user',
     example: new Types.ObjectId().toString(),
   })
   @IsMongoId()
