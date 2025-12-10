@@ -5,9 +5,11 @@ import {
   IsInt,
   Min,
   Max,
+  IsDateString,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { FilterQuery } from 'mongoose';
 
 export class QueryDto {
   @ApiProperty({
@@ -54,8 +56,59 @@ export class QueryDto {
   @IsOptional()
   sort?: string;
 
+  @ApiProperty({
+    description: 'Fields to select (comma-separated)',
+    example: 'name,description,createdAt',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  select?: string;
+
+  @ApiProperty({
+    description: 'Filter by creation date (after this date)',
+    example: '2024-01-01',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  createdAfter?: string;
+
+  @ApiProperty({
+    description: 'Filter by creation date (before this date)',
+    example: '2024-12-31',
+    required: false,
+  })
+  @IsDateString()
+  @IsOptional()
+  createdBefore?: string;
+
+  @ApiProperty({
+    description: 'JSON filters object for advanced filtering',
+    example: { status: 'active' },
+    required: false,
+  })
+  @IsObject()
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  })
+  filters?: Record<string, any>;
+
+  /**
+   * Internal use only - preset MongoDB query from code
+   * Not exposed via API
+   */
+  mongoQuery?: FilterQuery<any>;
+
   // Allow any additional properties for flexible querying
-  
   [key: string]: any;
 
   @ApiProperty({
