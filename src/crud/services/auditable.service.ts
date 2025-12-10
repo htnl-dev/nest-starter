@@ -19,11 +19,6 @@ export interface StatusUpdateDto {
   user?: string;
 }
 
-export type TransitionEffect<TContext = unknown> = (
-  context: TContext,
-  session?: ClientSession,
-) => Promise<void>;
-
 export abstract class AuditableService<
   Entity extends GenericAuditableDocument,
   CreateDto extends object = object,
@@ -41,30 +36,16 @@ export abstract class AuditableService<
 
   /**
    * Override to provide an XState machine for transition validation.
-   * Return undefined for lenient mode (any transition allowed).
+   * Return undefined to allow any transition.
    */
   get machine(): AnyStateMachine | undefined {
     return undefined;
   }
 
   /**
-   * Define transition effects. Override in subclass.
-   */
-  get effects(): Partial<Record<TStatus, TransitionEffect<Entity>>> {
-    return {};
-  }
-
-  /**
-   * Check if transitions are enforced (strict mode)
-   */
-  get isStrictMode(): boolean {
-    return this.machine !== undefined;
-  }
-
-  /**
    * Validate transition using XState machine
    */
-  private canTransition(from: TStatus, to: TStatus): boolean {
+  canTransition(from: TStatus, to: TStatus): boolean {
     if (!this.machine) return true;
 
     const actor = createActor(this.machine, {
@@ -98,21 +79,18 @@ export abstract class AuditableService<
       const currentStatus = entity.status as TStatus;
       const nextStatus = dto.status as TStatus;
 
-      // Validate transition if in strict mode
-      if (this.isStrictMode && !this.canTransition(currentStatus, nextStatus)) {
+      if (!this.canTransition(currentStatus, nextStatus)) {
         throw new InvalidTransitionException(currentStatus, nextStatus);
       }
 
       const auditEntry: AuditState = {
         status: nextStatus,
-        step: 'complete',
-        iterations: 0,
         description: dto.description || `Status changed to ${nextStatus}`,
         metadata: dto.metadata,
         user: dto.user,
       };
 
-      const updated = await this.forceUpdate(
+      return this.forceUpdate(
         id,
         {
           status: nextStatus,
@@ -120,14 +98,6 @@ export abstract class AuditableService<
         } as unknown as Partial<Entity>,
         session,
       );
-
-      // Execute transition effect if defined
-      const effect = this.effects[nextStatus];
-      if (effect && updated) {
-        await effect(updated, session);
-      }
-
-      return updated;
     });
   }
 
@@ -158,21 +128,21 @@ export abstract class AuditableService<
 }
 
 /**
- * Helper to create an XState machine for status transitions
+ * Create an XState machine for status transitions.
+ * Events are the target status names.
  */
-export function createStatusMachine<TStatus extends string>(config: {
-  id: string;
-  initial: TStatus;
-  states: {
-    [K in TStatus]: {
-      on?: { [event: string]: TStatus };
-      type?: 'final';
+export function createStatusMachine<TStatus extends string>(
+  id: string,
+  initial: TStatus,
+  transitions: Record<TStatus, TStatus[]>,
+) {
+  const states: Record<string, { on?: Record<string, string> }> = {};
+
+  for (const [from, toStates] of Object.entries<TStatus[]>(transitions)) {
+    states[from] = {
+      on: Object.fromEntries(toStates.map((to) => [to, to])),
     };
-  };
-}) {
-  return createMachine({
-    id: config.id,
-    initial: config.initial,
-    states: config.states as Record<string, object>,
-  });
+  }
+
+  return createMachine({ id, initial, states });
 }
