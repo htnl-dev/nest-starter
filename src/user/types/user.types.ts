@@ -1,7 +1,1 @@
-export interface CurrentUser {
-  _id: string;
-  username: string;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
+export type { CurrentUser } from '../../crud/types/current-user.type';
