@@ -7,13 +7,11 @@ import {
   LogtoLog,
   LogtoRole,
   LogtoScope,
-  LogtoOrganizationInvitation,
 } from '../types/logto.types';
 import { PaginatedResponseDto } from '../../crud/dto/paginated-response.dto';
 import { LogtoCreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UpdateUserRolesDto } from '../dtos/update-user-roles.dto';
-import { InviteUserDto } from '../dtos/invite-user.dto';
 
 @Injectable()
 export class LogtoUsersService extends BaseLogtoService<
@@ -78,26 +76,9 @@ export class LogtoUsersService extends BaseLogtoService<
     });
   }
 
-  async addToOrganization(
-    userId: string,
-    organizationId: string = this.config.organizationId,
-  ): Promise<void> {
-    try {
-      await (this.apiClient.POST as any)(
-        `/api/organizations/${organizationId}/users`,
-        {
-          body: { userId },
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to add user ${userId} to organization ${organizationId}`,
-        error,
-      );
-      throw error;
-    }
-  }
-
+  /**
+   * Get organizations that a user belongs to
+   */
   async getOrganizations(userId: string): Promise<any[]> {
     try {
       const response = await (this.apiClient.GET as any)(
@@ -115,25 +96,6 @@ export class LogtoUsersService extends BaseLogtoService<
         error,
       );
       return [];
-    }
-  }
-
-  async isInOrganization(userId: string): Promise<boolean> {
-    try {
-      const usersInOrganization = await this.getOrganizationUsers({
-        page: 1,
-        page_size: 100,
-        search: userId,
-      });
-      return usersInOrganization.data.some(
-        (user: LogtoUser) => user.id === userId,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to check organization membership for user ${userId}`,
-        error,
-      );
-      return false;
     }
   }
 
@@ -202,46 +164,6 @@ export class LogtoUsersService extends BaseLogtoService<
     }
   }
 
-  async getOrganizationUsers(
-    params?: LogtoQueryParams,
-  ): Promise<PaginatedResponseDto<LogtoUser>> {
-    try {
-      const organizationId = this.config.organizationId;
-      const queryParams = this.buildQueryParams(params);
-
-      const response = await this.apiClient.GET(
-        '/api/organizations/{id}/users',
-        {
-          params: {
-            path: { id: organizationId },
-            query: queryParams as unknown as Record<string, unknown>,
-          },
-        },
-      );
-
-      if (!response.data) {
-        throw new Error('Failed to fetch organization users');
-      }
-
-      const users = (response.data ?? []) as unknown as LogtoUser[];
-      const logtoResponse: LogtoListResponse<LogtoUser> = {
-        data: users,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
-          : undefined,
-      };
-
-      return this.transformToPaginatedResponse(
-        logtoResponse,
-        params?.page ?? 1,
-        params?.page_size ?? 20,
-      );
-    } catch (error) {
-      this.logger.error('Failed to get organization users', error);
-      throw error;
-    }
-  }
-
   async updateRoles(
     userId: string,
     updateUserRolesDto: UpdateUserRolesDto,
@@ -306,30 +228,6 @@ export class LogtoUsersService extends BaseLogtoService<
     } catch (error) {
       this.logger.error(
         `Failed to remove role ${roleId} from user ${userId}`,
-        error,
-      );
-      throw error;
-    }
-  }
-
-  async inviteUser(
-    inviteUserDto: InviteUserDto,
-  ): Promise<LogtoOrganizationInvitation> {
-    try {
-      const payload = {
-        ...inviteUserDto,
-        organizationId: this.config.organizationId,
-      };
-
-      return await this.post<LogtoOrganizationInvitation>(
-        '/api/organization-invitations',
-        {
-          body: payload as unknown,
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to invite user ${inviteUserDto.invitee}`,
         error,
       );
       throw error;
