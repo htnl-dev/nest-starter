@@ -556,9 +556,10 @@ The Logto module provides grouped services by functionality:
 
 | Service | Description |
 |---------|-------------|
-| `LogtoUsersService` | User management (CRUD, suspension, organization membership) |
+| `LogtoUsersService` | User management (CRUD, suspension, roles, scopes) |
 | `RolesService` | Role management with scope assignment |
 | `PermissionsService` | Permission/scope management |
+| `OrganizationsService` | Organization management, user membership, invitations |
 
 ### Usage
 
