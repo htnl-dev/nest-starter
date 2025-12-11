@@ -1,7 +1,14 @@
-import { Injectable, Logger, ConflictException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection, ClientSession } from 'mongoose';
 import { MongoServerError } from 'mongodb';
+import {
+  MongoErrorCode,
+  DuplicateKeyException,
+  WriteConflictException,
+  DocumentValidationException,
+  QueryTimeoutException,
+} from '../errors/mongodb.errors';
 
 @Injectable()
 export class TransactionManager {
@@ -77,10 +84,37 @@ export class TransactionManager {
   }
 
   private transformError(error: unknown): Error {
-    if (error instanceof MongoServerError && error.code === 11000) {
-      return new ConflictException('Resource already exists');
+    if (!(error instanceof MongoServerError)) {
+      return error as Error;
     }
-    return error as Error;
+
+    switch (error.code) {
+      case MongoErrorCode.DUPLICATE_KEY:
+        return new DuplicateKeyException(
+          this.extractDuplicateKeyField(error),
+          'Resource already exists',
+        );
+      case MongoErrorCode.WRITE_CONFLICT:
+        return new WriteConflictException();
+      case MongoErrorCode.DOCUMENT_VALIDATION_FAILURE:
+        return new DocumentValidationException(
+          error.errInfo as Record<string, unknown>,
+        );
+      case MongoErrorCode.EXCEEDED_TIME_LIMIT:
+        return new QueryTimeoutException();
+      default:
+        return error;
+    }
+  }
+
+  private extractDuplicateKeyField(
+    error: MongoServerError,
+  ): string | undefined {
+    const keyPattern = error.keyPattern as Record<string, unknown> | undefined;
+    if (keyPattern) {
+      return Object.keys(keyPattern)[0];
+    }
+    return undefined;
   }
 
   private isTransientError(error: unknown): boolean {
@@ -88,12 +122,10 @@ export class TransactionManager {
       return false;
     }
 
-    // WriteConflict error
-    if (error.code === 112) {
+    if (error.code === MongoErrorCode.WRITE_CONFLICT) {
       return true;
     }
 
-    // TransientTransactionError label
     if (error.errorLabels?.includes('TransientTransactionError')) {
       return true;
     }
