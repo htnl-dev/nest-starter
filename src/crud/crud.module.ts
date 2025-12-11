@@ -9,4 +9,4 @@ const services = [TransactionManager, CacheService];
   providers: services,
   exports: services,
 })
-export class CrudModule {}
+export class CommonModule {}
