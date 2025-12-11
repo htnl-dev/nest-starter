@@ -4,7 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { AbstractCrudService } from '../crud/services/crud.service';
+import { AbstractService } from '../crud/services/crud.service';
 import { User, UserDocument } from './entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ClientSession, PopulateOptions } from 'mongoose';
@@ -12,12 +12,12 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { CurrentUser } from './types/user.types';
 import { LogtoUsersService } from '../logto/services/users.service';
-import { GenericCrudDocument } from '../crud/entities/crud.entity';
+import { GenericDocument } from '../crud/entities/crud.entity';
 import { TransactionManager } from '../crud/services/transaction.manager';
 
 @Injectable()
-export class UserService extends AbstractCrudService<
-  UserDocument & GenericCrudDocument,
+export class UserService extends AbstractService<
+  UserDocument & GenericDocument,
   CreateUserDto,
   UpdateUserDto
 > {

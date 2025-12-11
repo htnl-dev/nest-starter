@@ -13,18 +13,18 @@ import {
   HydratedDocument,
 } from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { CreateCrudDto as AbstractCreateDto } from '../dto/create-crud.dto';
-import { UpdateCrudDto as AbstractUpdateDto } from '../dto/update-crud.dto';
+import { AbstractCreateDto } from '../dto/create-crud.dto';
+import { AbstractUpdateDto } from '../dto/update-crud.dto';
 import { QueryDto } from '../dto/crud-query.dto';
 import { PaginatedResponseDto } from '../dto/paginated-response.dto';
-import { CrudEntity, GenericCrudDocument } from '../entities/crud.entity';
+import { AbstractEntity, GenericDocument } from '../entities/crud.entity';
 import { TransactionManager } from './transaction.manager';
 import { buildQuery, executePaginatedQuery } from '../utils/query-builder.util';
 import type { CurrentUser } from '../types/current-user.type';
 
 @Injectable()
-export abstract class AbstractCrudService<
-  Entity extends GenericCrudDocument,
+export abstract class AbstractService<
+  Entity extends GenericDocument,
   CreateDto extends object = AbstractCreateDto,
   UpdateDto extends object = AbstractUpdateDto,
 > implements OnApplicationShutdown
@@ -32,7 +32,7 @@ export abstract class AbstractCrudService<
   protected readonly logger = new Logger(this.constructor.name);
 
   constructor(
-    @InjectModel(CrudEntity.name) protected readonly model: Model<Entity>,
+    @InjectModel(AbstractEntity.name) protected readonly model: Model<Entity>,
     protected readonly transactionManager: TransactionManager,
     protected readonly schedulerRegistry?: SchedulerRegistry,
   ) {}
