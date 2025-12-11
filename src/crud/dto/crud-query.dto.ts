@@ -106,17 +106,5 @@ export class QueryDto {
    * Internal use only - preset MongoDB query from code
    * Not exposed via API
    */
-  mongoQuery?: FilterQuery<any>;
-
-  // Allow any additional properties for flexible querying
-  [key: string]: any;
-
-  @ApiProperty({
-    description: 'Filter by metadata (partial match on object keys/values)',
-    example: { key: 'value' },
-    required: false,
-  })
-  @IsObject()
-  @IsOptional()
-  metadata?: Record<string, any>;
+  mongoQuery?: FilterQuery<unknown>;
 }
