@@ -16,7 +16,7 @@ import {
 import {
   PaginatedResponseDto,
   PaginationMetaDto,
-} from '../../crud/dto/paginated-response.dto';
+} from '../../common/dto/paginated-response.dto';
 import type { LogtoConfig } from '../interfaces/logto-config.interface';
 import type { IBaseLogtoService } from '../interfaces/base-logto.types';
 

@@ -1,4 +1,4 @@
-import type { PaginatedResponseDto } from '../../crud/dto/paginated-response.dto';
+import type { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import type { LogtoQueryParams } from '../types/logto.types';
 
 export interface IBaseLogtoService<T, CreateDto, UpdateDto> {

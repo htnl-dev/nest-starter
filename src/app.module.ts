@@ -4,7 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SeederModule } from './database/seeders/seeder.module';
-import { CommonModule } from './crud/crud.module';
+import { CommonModule } from './common/common.module';
 import { UserModule } from './user/user.module';
 import { LogtoModule } from './logto/logto.module';
 import { HealthModule } from './health/health.module';

@@ -6,7 +6,7 @@ import {
   PopulateOptions,
   Types,
 } from 'mongoose';
-import { QueryDto } from '../dto/crud-query.dto';
+import { QueryDto } from '../dto/query.dto';
 
 export interface QueryBuildResult<TDocument> {
   mongoQuery: FilterQuery<TDocument>;

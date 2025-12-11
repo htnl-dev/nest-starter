@@ -9,11 +9,11 @@ import {
   Query,
   Logger,
 } from '@nestjs/common';
-import { AbstractService } from '../services/crud.service';
-import { AbstractCreateDto } from '../dto/create-crud.dto';
-import { AbstractUpdateDto } from '../dto/update-crud.dto';
-import { GenericDocument } from '../entities/crud.entity';
-import { QueryDto } from '../dto/crud-query.dto';
+import { AbstractService } from '../services/abstract.service';
+import { AbstractCreateDto } from '../dto/abstract-create.dto';
+import { AbstractUpdateDto } from '../dto/abstract-update.dto';
+import { GenericDocument } from '../entities/abstract.entity';
+import { QueryDto } from '../dto/query.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { CurrentUser } from '../types/current-user.type';
 

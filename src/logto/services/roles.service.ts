@@ -7,7 +7,7 @@ import {
   LogtoListResponse,
   LogtoQueryParams,
 } from '../types/logto.types';
-import { PaginatedResponseDto } from '../../crud/dto/paginated-response.dto';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { CreateRoleDto } from '../dtos/create-role.dto';
 import { UpdateRoleDto } from '../dtos/update-role.dto';
 

@@ -13,11 +13,11 @@ import {
   HydratedDocument,
 } from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { AbstractCreateDto } from '../dto/create-crud.dto';
-import { AbstractUpdateDto } from '../dto/update-crud.dto';
-import { QueryDto } from '../dto/crud-query.dto';
+import { AbstractCreateDto } from '../dto/abstract-create.dto';
+import { AbstractUpdateDto } from '../dto/abstract-update.dto';
+import { QueryDto } from '../dto/query.dto';
 import { PaginatedResponseDto } from '../dto/paginated-response.dto';
-import { AbstractEntity, GenericDocument } from '../entities/crud.entity';
+import { AbstractEntity, GenericDocument } from '../entities/abstract.entity';
 import { TransactionManager } from './transaction.manager';
 import { buildQuery, executePaginatedQuery } from '../utils/query-builder.util';
 import type { CurrentUser } from '../types/current-user.type';

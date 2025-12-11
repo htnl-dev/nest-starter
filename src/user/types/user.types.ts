@@ -1,1 +1,1 @@
-export type { CurrentUser } from '../../crud/types/current-user.type';
+export type { CurrentUser } from '../../common/types/current-user.type';

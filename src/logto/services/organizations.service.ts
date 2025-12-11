@@ -6,7 +6,7 @@ import {
   LogtoQueryParams,
   LogtoOrganizationInvitation,
 } from '../types/logto.types';
-import { PaginatedResponseDto } from '../../crud/dto/paginated-response.dto';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { InviteUserDto } from '../dtos/invite-user.dto';
 
 export interface LogtoOrganization {

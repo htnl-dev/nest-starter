@@ -8,7 +8,7 @@ import {
   LogtoRole,
   LogtoScope,
 } from '../types/logto.types';
-import { PaginatedResponseDto } from '../../crud/dto/paginated-response.dto';
+import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto';
 import { LogtoCreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UpdateUserRolesDto } from '../dtos/update-user-roles.dto';
