@@ -14,9 +14,6 @@ import type { CurrentUser } from './types/user.types';
 import { LogtoUsersService } from '../logto/services/users.service';
 import { GenericCrudDocument } from '../crud/entities/crud.entity';
 import { TransactionManager } from '../crud/services/transaction.manager';
-import { QueryBuilderService } from '../crud/services/query-builder.service';
-import { OptimisticLockingService } from '../crud/services/optimistic-locking.service';
-import { EntityEventEmitter } from '../crud/services/entity-event.emitter';
 
 @Injectable()
 export class UserService extends AbstractCrudService<
@@ -27,18 +24,9 @@ export class UserService extends AbstractCrudService<
   constructor(
     @InjectModel(User.name) model: Model<UserDocument>,
     transactionManager: TransactionManager,
-    queryBuilder: QueryBuilderService,
-    lockingService: OptimisticLockingService,
-    entityEvents: EntityEventEmitter,
     private readonly logtoUsersService: LogtoUsersService,
   ) {
-    super(
-      model,
-      transactionManager,
-      queryBuilder,
-      lockingService,
-      entityEvents,
-    );
+    super(model, transactionManager);
   }
 
   get populator(): Array<string | PopulateOptions> {
