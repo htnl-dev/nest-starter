@@ -1,13 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { Queue, JobsOptions } from 'bullmq';
+import { Queue } from 'bullmq';
+import { EnqueueJobOptions } from '../types/queue.types';
 
-export interface EnqueueJobOptions {
-  jobId: string;
-  delay?: number;
-  data?: Record<string, unknown>;
-  jobName?: string;
-  options?: Partial<JobsOptions>;
-}
+export type { EnqueueJobOptions } from '../types/queue.types';
 
 @Injectable()
 export abstract class AbstractListener {

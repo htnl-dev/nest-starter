@@ -1,18 +1,8 @@
 import { SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema } from 'mongoose';
+import { Schema } from 'mongoose';
+import { CreateSchemaOptions, Document } from '../types/schema.types';
 
-/**
- * Generic document type helper for Mongoose entities
- */
-export type Document<T> = HydratedDocument<T>;
-
-export interface CreateSchemaOptions {
-  /**
-   * Add a wildcard text index on all string fields for full-text search
-   * @default true
-   */
-  textIndex?: boolean;
-}
+export type { CreateSchemaOptions, Document } from '../types/schema.types';
 
 /**
  * Creates a Mongoose schema from a class with common configurations

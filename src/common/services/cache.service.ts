@@ -1,10 +1,9 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { CacheOptions } from '../types/cache.types';
 
-export interface CacheOptions {
-  ttl?: number; // Time to live in seconds
-}
+export type { CacheOptions } from '../types/cache.types';
 
 @Injectable()
 export class CacheService implements OnModuleDestroy {

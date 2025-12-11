@@ -7,20 +7,9 @@ import {
   Types,
 } from 'mongoose';
 import { QueryDto } from '../dto/query.dto';
+import { PaginationMeta, QueryBuildResult } from '../types/query.types';
 
-export interface QueryBuildResult<TDocument> {
-  mongoQuery: FilterQuery<TDocument>;
-  sortOptions: Record<string, 1 | -1>;
-  skip: number;
-  limit: number;
-}
-
-export interface PaginationMeta {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+export type { PaginationMeta, QueryBuildResult } from '../types/query.types';
 
 /**
  * Build a complete MongoDB query from QueryDto parameters
