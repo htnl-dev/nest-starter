@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   HttpCode,
   HttpStatus,
   BadRequestException,
@@ -80,10 +79,6 @@ export class UserController {
           await this.userService.onboardFromLogto(logtoUserId);
           break;
 
-        case 'User.Deleted':
-          await this.userService.removeByLogtoId(logtoUserId);
-          break;
-
         default:
           this.logger.debug(`Unhandled Logto webhook event: ${payload.event}`);
       }
@@ -114,12 +109,5 @@ export class UserController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
-  }
-
-  @ApiOperation({ summary: 'Delete user' })
-  @ApiResponse({ status: 200, description: 'User deleted successfully' })
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(id);
   }
 }
