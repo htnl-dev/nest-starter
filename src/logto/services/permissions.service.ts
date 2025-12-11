@@ -20,22 +20,14 @@ export class PermissionsService extends BaseLogtoService<
   ): Promise<PaginatedResponseDto<LogtoScope>> {
     try {
       const queryParams = this.buildQueryParams(params);
-      const response = await this.apiClient.GET('/api/organization-scopes', {
+      const scopes = await this.get<LogtoScope[]>('/api/organization-scopes', {
         params: {
-          query: queryParams as any,
+          query: queryParams,
         },
       });
 
-      if (!response.data) {
-        throw new Error('Failed to fetch permissions');
-      }
-
-      const scopes = (response.data ?? []) as unknown as LogtoScope[];
       const logtoResponse: LogtoListResponse<LogtoScope> = {
         data: scopes,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
-          : undefined,
       };
 
       return this.transformToPaginatedResponse(
@@ -51,13 +43,8 @@ export class PermissionsService extends BaseLogtoService<
 
   async findOne(scopeId: string): Promise<LogtoScope> {
     try {
-      const response = await this.apiClient.GET('/api/organization-scopes');
+      const scopes = await this.get<LogtoScope[]>('/api/organization-scopes');
 
-      if (!response.data) {
-        throw new Error('Failed to fetch permissions');
-      }
-
-      const scopes = (response.data ?? []) as unknown as LogtoScope[];
       const scope = scopes.find((s) => s.id === scopeId);
 
       if (!scope) {
@@ -73,7 +60,7 @@ export class PermissionsService extends BaseLogtoService<
 
   async create(createPermissionDto: CreatePermissionDto): Promise<LogtoScope> {
     return this.post<LogtoScope>('/api/organization-scopes', {
-      body: createPermissionDto as unknown,
+      body: createPermissionDto,
     });
   }
 
@@ -83,7 +70,7 @@ export class PermissionsService extends BaseLogtoService<
   ): Promise<LogtoScope> {
     return this.patch<LogtoScope>('/api/organization-scopes/{scopeId}', {
       params: { path: { scopeId } },
-      body: updatePermissionDto as unknown,
+      body: updatePermissionDto,
     });
   }
 

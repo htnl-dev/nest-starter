@@ -8,13 +8,31 @@ import {
   createManagementApi,
   type CreateManagementApiOptions,
 } from '@logto/api/management';
-import { LogtoListResponse, LogtoQueryParams } from '../types/logto.types';
+import {
+  LogtoListResponse,
+  LogtoQueryParams,
+  LogtoApiError,
+} from '../types/logto.types';
 import {
   PaginatedResponseDto,
   PaginationMetaDto,
 } from '../../crud/dto/paginated-response.dto';
 import type { LogtoConfig } from '../interfaces/logto-config.interface';
 import type { IBaseLogtoService } from '../interfaces/base-logto.types';
+
+interface LogtoApiResponse<T> {
+  data?: T;
+  error?: LogtoApiError;
+  response: Response;
+}
+
+type LogtoApiMethod = <T>(
+  path: string,
+  options?: {
+    params?: { path?: Record<string, string>; query?: Record<string, unknown> };
+    body?: unknown;
+  },
+) => Promise<LogtoApiResponse<T>>;
 
 @Injectable()
 export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
@@ -98,17 +116,18 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
     },
   ): Promise<TResponse> {
     try {
-      const response = await (this.apiClient.GET as any)(path, options);
+      const apiGet = this.apiClient.GET as LogtoApiMethod;
+      const response = await apiGet<TResponse>(path, options);
 
       if (!response.data) {
         this.logger.error(`GET ${path} failed`, response.error);
         throw new InternalServerErrorException(
-          response.error,
+          response.error?.message ?? 'Unknown error',
           `GET ${path} failed`,
         );
       }
 
-      return response.data as TResponse;
+      return response.data;
     } catch (error) {
       this.logger.error(`GET ${path} failed`, error);
       throw error;
@@ -123,17 +142,18 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
     },
   ): Promise<TResponse> {
     try {
-      const response = await (this.apiClient.POST as any)(path, options);
+      const apiPost = this.apiClient.POST as LogtoApiMethod;
+      const response = await apiPost<TResponse>(path, options);
 
       if (!response.data) {
         this.logger.error(`POST ${path} failed`, response.error);
         throw new InternalServerErrorException(
-          response.error,
+          response.error?.message ?? 'Unknown error',
           `POST ${path} failed`,
         );
       }
 
-      return response.data as TResponse;
+      return response.data;
     } catch (error) {
       this.logger.error(`POST ${path} failed`, error);
       throw error;
@@ -148,12 +168,13 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
     },
   ): Promise<TResponse> {
     try {
-      const response = await (this.apiClient.PUT as any)(path, options);
+      const apiPut = this.apiClient.PUT as LogtoApiMethod;
+      const response = await apiPut<TResponse>(path, options);
 
       if (!response.response.ok) {
         this.logger.error(`PUT ${path} failed`, response.error);
         throw new InternalServerErrorException(
-          response.error,
+          response.error?.message ?? 'Unknown error',
           `PUT ${path} failed`,
         );
       }
@@ -173,12 +194,13 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
     },
   ): Promise<TResponse> {
     try {
-      const response = await (this.apiClient.PATCH as any)(path, options);
+      const apiPatch = this.apiClient.PATCH as LogtoApiMethod;
+      const response = await apiPatch<TResponse>(path, options);
 
       if (!response.response.ok) {
         this.logger.error(`PATCH ${path} failed`, response.error);
         throw new InternalServerErrorException(
-          response.error,
+          response.error?.message ?? 'Unknown error',
           `PATCH ${path} failed`,
         );
       }
@@ -197,12 +219,13 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
     },
   ): Promise<void> {
     try {
-      const response = await (this.apiClient.DELETE as any)(path, options);
+      const apiDelete = this.apiClient.DELETE as LogtoApiMethod;
+      const response = await apiDelete<void>(path, options);
 
       if (response.error) {
         this.logger.error(`DELETE ${path} failed`, response.error);
         throw new InternalServerErrorException(
-          response.error,
+          response.error.message ?? 'Unknown error',
           `DELETE ${path} failed`,
         );
       }

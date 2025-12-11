@@ -22,22 +22,14 @@ export class RolesService extends BaseLogtoService<
   ): Promise<PaginatedResponseDto<LogtoRole>> {
     try {
       const queryParams = this.buildQueryParams(params);
-      const response = await this.apiClient.GET('/api/organization-roles', {
+      const roles = await this.get<LogtoRole[]>('/api/organization-roles', {
         params: {
-          query: queryParams as unknown as Record<string, unknown>,
+          query: queryParams,
         },
       });
 
-      if (!response.data) {
-        throw new Error('Failed to fetch roles');
-      }
-
-      const roles = (response.data ?? []) as unknown as LogtoRole[];
       const logtoResponse: LogtoListResponse<LogtoRole> = {
         data: roles,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
-          : undefined,
       };
 
       return this.transformToPaginatedResponse(
@@ -76,7 +68,7 @@ export class RolesService extends BaseLogtoService<
 
   async create(createRoleDto: CreateRoleDto): Promise<LogtoRole> {
     return this.post<LogtoRole>('/api/organization-roles', {
-      body: createRoleDto as any,
+      body: createRoleDto,
     });
   }
 
@@ -93,7 +85,7 @@ export class RolesService extends BaseLogtoService<
           '/api/organization-roles/{id}',
           {
             params: { path: { id: roleId } },
-            body: baseUpdate as any,
+            body: baseUpdate,
           },
         );
       } else {
@@ -108,7 +100,7 @@ export class RolesService extends BaseLogtoService<
       if (organizationScopeIds && organizationScopeIds.length > 0) {
         await this.put<void>('/api/organization-roles/{id}/scopes', {
           params: { path: { id: roleId } },
-          body: { organizationScopeIds } as any,
+          body: { organizationScopeIds },
         }).catch((error) => {
           this.logger.error(`Failed to update role ${roleId} scopes`, error);
           throw error;

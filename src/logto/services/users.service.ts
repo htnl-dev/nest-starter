@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { BaseLogtoService } from './base-logto.service';
 import {
   LogtoUser,
@@ -12,6 +12,7 @@ import { PaginatedResponseDto } from '../../crud/dto/paginated-response.dto';
 import { LogtoCreateUserDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UpdateUserRolesDto } from '../dtos/update-user-roles.dto';
+import { LogtoOrganization } from './organizations.service';
 
 @Injectable()
 export class LogtoUsersService extends BaseLogtoService<
@@ -24,20 +25,12 @@ export class LogtoUsersService extends BaseLogtoService<
   ): Promise<PaginatedResponseDto<LogtoUser>> {
     try {
       const queryParams = this.buildQueryParams(params);
-      const response = await this.apiClient.GET('/api/users', {
-        params: { query: queryParams as any },
+      const users = await this.get<LogtoUser[]>('/api/users', {
+        params: { query: queryParams },
       });
 
-      if (!response.data) {
-        throw new Error('Failed to fetch users');
-      }
-
-      const users = (response.data ?? []) as unknown as LogtoUser[];
       const logtoResponse: LogtoListResponse<LogtoUser> = {
         data: users,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
-          : undefined,
       };
 
       return this.transformToPaginatedResponse(
@@ -59,14 +52,14 @@ export class LogtoUsersService extends BaseLogtoService<
 
   async create(createUserDto: LogtoCreateUserDto): Promise<LogtoUser> {
     return this.post<LogtoUser>('/api/users', {
-      body: createUserDto as any,
+      body: createUserDto,
     });
   }
 
   async update(userId: string, updateDto: UpdateUserDto): Promise<LogtoUser> {
     return this.patch<LogtoUser>('/api/users/{userId}', {
       params: { path: { userId } },
-      body: updateDto as unknown,
+      body: updateDto,
     });
   }
 
@@ -79,17 +72,11 @@ export class LogtoUsersService extends BaseLogtoService<
   /**
    * Get organizations that a user belongs to
    */
-  async getOrganizations(userId: string): Promise<any[]> {
+  async getOrganizations(userId: string): Promise<LogtoOrganization[]> {
     try {
-      const response = await (this.apiClient.GET as any)(
+      return await this.get<LogtoOrganization[]>(
         `/api/users/${userId}/organizations`,
       );
-
-      if (!response.data) {
-        return [];
-      }
-
-      return (response.data ?? []) as unknown as any[];
     } catch (error) {
       this.logger.error(
         `Failed to get organizations for user ${userId}`,
@@ -104,20 +91,9 @@ export class LogtoUsersService extends BaseLogtoService<
     isSuspended: boolean,
   ): Promise<LogtoUser> {
     try {
-      const response = await (this.apiClient.PATCH as any)(
-        `/api/users/${userId}/is-suspended`,
-        {
-          body: { isSuspended },
-        },
-      );
-
-      if (!response.data) {
-        throw new NotFoundException(
-          `Failed to update suspension status for user ${userId}`,
-        );
-      }
-
-      return response.data as unknown as LogtoUser;
+      return await this.patch<LogtoUser>(`/api/users/${userId}/is-suspended`, {
+        body: { isSuspended },
+      });
     } catch (error) {
       this.logger.error(
         `Failed to update suspension status for user ${userId}`,
@@ -132,25 +108,17 @@ export class LogtoUsersService extends BaseLogtoService<
     params?: LogtoQueryParams,
   ): Promise<PaginatedResponseDto<LogtoLog>> {
     try {
-      const queryParams = this.buildQueryParams(params);
-      queryParams.userId = userId;
+      const queryParams: Record<string, unknown> = {
+        ...this.buildQueryParams(params),
+        userId,
+      };
 
-      const response = await (this.apiClient.GET as any)('/api/logs', {
-        params: { query: queryParams as any },
+      const logs = await this.get<LogtoLog[]>('/api/logs', {
+        params: { query: queryParams },
       });
-
-      if (!response.data) {
-        throw new Error(`Failed to fetch logs for user ${userId}`);
-      }
-
-      const logs = (response.data ?? []) as unknown as LogtoLog[];
-      const totalCount = response.response.headers.get('Total-Number')
-        ? parseInt(response.response.headers.get('Total-Number'), 10)
-        : undefined;
 
       const logtoResponse: LogtoListResponse<LogtoLog> = {
         data: logs,
-        totalCount,
       };
 
       return this.transformToPaginatedResponse(
@@ -175,7 +143,7 @@ export class LogtoUsersService extends BaseLogtoService<
           params: {
             path: { userId, organizationId: this.config.organizationId },
           },
-          body: updateUserRolesDto as unknown,
+          body: updateUserRolesDto,
         },
       );
     } catch (error) {

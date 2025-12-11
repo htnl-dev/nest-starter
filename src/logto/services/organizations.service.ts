@@ -13,20 +13,20 @@ export interface LogtoOrganization {
   id: string;
   name: string;
   description?: string;
-  customData?: Record<string, any>;
+  customData?: Record<string, unknown>;
   createdAt: number;
 }
 
 export class CreateOrganizationDto {
   name: string;
   description?: string;
-  customData?: Record<string, any>;
+  customData?: Record<string, unknown>;
 }
 
 export class UpdateOrganizationDto {
   name?: string;
   description?: string;
-  customData?: Record<string, any>;
+  customData?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -40,23 +40,17 @@ export class OrganizationsService extends BaseLogtoService<
   ): Promise<PaginatedResponseDto<LogtoOrganization>> {
     try {
       const queryParams = this.buildQueryParams(params);
-      const response = await this.apiClient.GET('/api/organizations', {
-        params: {
-          query: queryParams as unknown as Record<string, unknown>,
+      const organizations = await this.get<LogtoOrganization[]>(
+        '/api/organizations',
+        {
+          params: {
+            query: queryParams,
+          },
         },
-      });
+      );
 
-      if (!response.data) {
-        throw new Error('Failed to fetch organizations');
-      }
-
-      const organizations = (response.data ??
-        []) as unknown as LogtoOrganization[];
       const logtoResponse: LogtoListResponse<LogtoOrganization> = {
         data: organizations,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
-          : undefined,
       };
 
       return this.transformToPaginatedResponse(
@@ -78,7 +72,7 @@ export class OrganizationsService extends BaseLogtoService<
 
   async create(createDto: CreateOrganizationDto): Promise<LogtoOrganization> {
     return this.post<LogtoOrganization>('/api/organizations', {
-      body: createDto as any,
+      body: createDto,
     });
   }
 
@@ -88,7 +82,7 @@ export class OrganizationsService extends BaseLogtoService<
   ): Promise<LogtoOrganization> {
     return this.patch<LogtoOrganization>('/api/organizations/{id}', {
       params: { path: { id: organizationId } },
-      body: updateDto as unknown,
+      body: updateDto,
     });
   }
 
@@ -108,26 +102,18 @@ export class OrganizationsService extends BaseLogtoService<
     try {
       const queryParams = this.buildQueryParams(params);
 
-      const response = await this.apiClient.GET(
+      const users = await this.get<LogtoUser[]>(
         '/api/organizations/{id}/users',
         {
           params: {
             path: { id: organizationId },
-            query: queryParams as unknown as Record<string, unknown>,
+            query: queryParams,
           },
         },
       );
 
-      if (!response.data) {
-        throw new Error('Failed to fetch organization users');
-      }
-
-      const users = (response.data ?? []) as unknown as LogtoUser[];
       const logtoResponse: LogtoListResponse<LogtoUser> = {
         data: users,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number')!, 10)
-          : undefined,
       };
 
       return this.transformToPaginatedResponse(
@@ -149,12 +135,9 @@ export class OrganizationsService extends BaseLogtoService<
     organizationId: string = this.config.organizationId,
   ): Promise<void> {
     try {
-      await (this.apiClient.POST as any)(
-        `/api/organizations/${organizationId}/users`,
-        {
-          body: { userId },
-        },
-      );
+      await this.post<void>(`/api/organizations/${organizationId}/users`, {
+        body: { userIds: [userId] },
+      });
     } catch (error) {
       this.logger.error(
         `Failed to add user ${userId} to organization ${organizationId}`,
@@ -228,7 +211,7 @@ export class OrganizationsService extends BaseLogtoService<
       return await this.post<LogtoOrganizationInvitation>(
         '/api/organization-invitations',
         {
-          body: payload as unknown,
+          body: payload,
         },
       );
     } catch (error) {
@@ -248,27 +231,20 @@ export class OrganizationsService extends BaseLogtoService<
     organizationId: string = this.config.organizationId,
   ): Promise<PaginatedResponseDto<LogtoOrganizationInvitation>> {
     try {
-      const queryParams = this.buildQueryParams(params);
-      queryParams.organizationId = organizationId;
+      const queryParams: Record<string, unknown> = {
+        ...this.buildQueryParams(params),
+        organizationId,
+      };
 
-      const response = await (this.apiClient.GET as any)(
+      const invitations = await this.get<LogtoOrganizationInvitation[]>(
         '/api/organization-invitations',
         {
-          params: { query: queryParams as any },
+          params: { query: queryParams },
         },
       );
 
-      if (!response.data) {
-        throw new Error('Failed to fetch organization invitations');
-      }
-
-      const invitations = (response.data ??
-        []) as unknown as LogtoOrganizationInvitation[];
       const logtoResponse: LogtoListResponse<LogtoOrganizationInvitation> = {
         data: invitations,
-        totalCount: response.response.headers.get('Total-Number')
-          ? parseInt(response.response.headers.get('Total-Number'), 10)
-          : undefined,
       };
 
       return this.transformToPaginatedResponse(
