@@ -3,12 +3,11 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { Connection, ClientSession } from 'mongoose';
 import { MongoServerError } from 'mongodb';
 
-const MAX_RETRIES = 3;
-const BASE_RETRY_DELAY_MS = 20;
-
 @Injectable()
 export class TransactionManager {
   private readonly logger = new Logger(TransactionManager.name);
+  private readonly maxRetries = 3;
+  private readonly baseRetryDelayMs = 20;
 
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
@@ -20,7 +19,7 @@ export class TransactionManager {
     session: ClientSession | undefined,
     fn: (session: ClientSession) => Promise<R>,
   ): Promise<R> {
-    return this.executeWithRetry(session, fn, MAX_RETRIES);
+    return this.executeWithRetry(session, fn, this.maxRetries);
   }
 
   /**
@@ -59,7 +58,9 @@ export class TransactionManager {
       if (isTransactionOwner && retriesLeft > 0 && this.isTransientError(e)) {
         shouldEndSession = false;
         await localSession.endSession();
-        await this.delay(BASE_RETRY_DELAY_MS * (MAX_RETRIES - retriesLeft + 1));
+        await this.delay(
+          this.baseRetryDelayMs * (this.maxRetries - retriesLeft + 1),
+        );
         return this.executeWithRetry(undefined, fn, retriesLeft - 1);
       }
 
