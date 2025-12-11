@@ -35,5 +35,5 @@ export class AbstractCreateDto {
       key: 'value',
     },
   })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }

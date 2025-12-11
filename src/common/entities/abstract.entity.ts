@@ -26,5 +26,5 @@ export abstract class AbstractEntity {
   description?: string;
 
   @Prop({ type: Object, default: {} })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }

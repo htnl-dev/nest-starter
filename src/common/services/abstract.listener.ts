@@ -4,7 +4,7 @@ import { Queue, JobsOptions } from 'bullmq';
 export interface EnqueueJobOptions {
   jobId: string;
   delay?: number;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   jobName?: string;
   options?: Partial<JobsOptions>;
 }
