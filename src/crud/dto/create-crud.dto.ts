@@ -2,7 +2,7 @@ import { IsMongoId, IsObject, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Types } from 'mongoose';
 
-export class CreateCrudDto {
+export class AbstractCreateDto {
   @ApiProperty({
     description: 'The name of the entity',
     example: 'The isle of man',

@@ -1,7 +1,7 @@
 import { PickType } from '@nestjs/mapped-types';
-import { CreateCrudDto } from './create-crud.dto';
+import { AbstractCreateDto } from './create-crud.dto';
 
-export class UpdateCrudDto extends PickType(CreateCrudDto, [
+export class AbstractUpdateDto extends PickType(AbstractCreateDto, [
   'description',
   'metadata',
 ]) {}
