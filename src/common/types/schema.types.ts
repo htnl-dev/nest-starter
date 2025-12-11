@@ -1,3 +1,13 @@
+import { IndexDefinition, IndexOptions } from 'mongoose';
+
+/**
+ * Custom index definition for schema creation
+ */
+export interface SchemaIndex {
+  fields: IndexDefinition;
+  options?: IndexOptions;
+}
+
 /**
  * Options for schema creation
  */
@@ -7,4 +17,9 @@ export interface CreateSchemaOptions {
    * @default true
    */
   textIndex?: boolean;
+
+  /**
+   * Additional indices to create on the schema
+   */
+  indices?: SchemaIndex[];
 }
