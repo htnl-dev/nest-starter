@@ -174,15 +174,7 @@ export abstract class AbstractCrudService<
         filters,
         select,
         mongoQuery = {},
-        ...queryParams
       } = query;
-
-      // Filter out undefined values from queryParams
-      for (const [key, value] of Object.entries(queryParams)) {
-        if (value !== undefined) {
-          mongoQuery[key] = value;
-        }
-      }
 
       if (filters) {
         for (const [key, value] of Object.entries(filters)) {
