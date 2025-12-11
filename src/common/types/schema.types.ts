@@ -1,10 +1,3 @@
-import { HydratedDocument } from 'mongoose';
-
-/**
- * Generic document type helper for Mongoose entities
- */
-export type Document<T> = HydratedDocument<T>;
-
 /**
  * Options for schema creation
  */

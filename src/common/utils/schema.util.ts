@@ -1,8 +1,8 @@
 import { SchemaFactory } from '@nestjs/mongoose';
 import { Schema } from 'mongoose';
-import { CreateSchemaOptions, Document } from '../types/schema.types';
+import { CreateSchemaOptions } from '../types/schema.types';
 
-export type { CreateSchemaOptions, Document } from '../types/schema.types';
+export type { CreateSchemaOptions } from '../types/schema.types';
 
 /**
  * Creates a Mongoose schema from a class with common configurations
@@ -14,7 +14,7 @@ export type { CreateSchemaOptions, Document } from '../types/schema.types';
  * @example
  * ```typescript
  * // In your entity file:
- * export type UserDocument = Document<User>;
+ * export type UserDocument = HydratedDocument<User>;
  * export const UserSchema = createSchema(User);
  *
  * // Without text index:

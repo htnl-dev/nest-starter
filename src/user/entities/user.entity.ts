@@ -1,8 +1,9 @@
 import { Prop, Schema } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
 import { AbstractEntity } from '../../common/entities/abstract.entity';
-import { createSchema, Document } from '../../common/utils/schema.util';
+import { createSchema } from '../../common/utils/schema.util';
 
-export type UserDocument = Document<User>;
+export type UserDocument = HydratedDocument<User>;
 
 @Schema({
   timestamps: true,
