@@ -67,7 +67,11 @@ export class TransactionManager {
         await localSession.abortTransaction();
       }
 
-      if (isTransactionOwner && retriesLeft > 0 && this.isTransientError(e)) {
+      if (
+        isTransactionOwner &&
+        retriesLeft > 0 &&
+        this.isTransientError(error)
+      ) {
         shouldEndSession = false;
         await localSession.endSession();
         await this.delay(
@@ -129,20 +133,11 @@ export class TransactionManager {
     return undefined;
   }
 
-  private isTransientError(error: unknown): boolean {
-    if (!(error instanceof MongoServerError)) {
-      return false;
-    }
-
-    if (error.code === MongoErrorCode.WRITE_CONFLICT) {
-      return true;
-    }
-
-    if (error.errorLabels?.includes('TransientTransactionError')) {
-      return true;
-    }
-
-    return false;
+  private isTransientError(error: Error): boolean {
+    return (
+      error instanceof WriteConflictException ||
+      error instanceof TransientTransactionException
+    );
   }
 
   private delay(ms: number): Promise<void> {
