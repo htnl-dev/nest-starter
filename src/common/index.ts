@@ -1,5 +1,4 @@
 export * from './common.module';
-export * from './constants';
 export * from './controllers';
 export * from './dto';
 export * from './entities';

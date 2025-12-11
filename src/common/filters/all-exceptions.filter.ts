@@ -7,7 +7,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { HTTP_STATUS } from '../constants';
 
 interface ErrorResponse {
   statusCode: number;
@@ -95,12 +94,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const method = request.method;
     const url = request.url;
 
-    if (status >= HTTP_STATUS.SERVER_ERROR_MIN) {
+    if (status >= 500) {
       this.logger.error(
         `${method} ${url} - ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
-    } else if (status >= HTTP_STATUS.CLIENT_ERROR_MIN) {
+    } else if (status >= 400) {
       this.logger.warn(
         `${method} ${url} - ${status}: ${exception instanceof Error ? exception.message : String(exception)}`,
       );
