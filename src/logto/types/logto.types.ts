@@ -12,8 +12,8 @@ export interface LogtoUser {
   primaryPhone?: string;
   name?: string;
   avatar?: string;
-  customData?: Record<string, any>;
-  identities?: Record<string, any>;
+  customData?: Record<string, unknown>;
+  identities?: Record<string, unknown>;
   lastSignInAt?: number;
   createdAt: number;
   applicationId?: string;
@@ -70,7 +70,7 @@ export interface LogtoScope {
 export interface LogtoLog {
   id: string;
   key: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   createdAt: number;
 }
 
@@ -82,7 +82,7 @@ export interface LogtoListResponse<T> {
 export interface LogtoApiError {
   code: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface LogtoQueryParams {
