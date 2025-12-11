@@ -208,16 +208,22 @@ export abstract class AbstractCrudService<
 
       if (createdAfter) {
         const existingCreatedAt =
-          (filterQuery.createdAt as Record<string, unknown>) ?? {};
-        filterQuery.createdAt = {
+          ((filterQuery as Record<string, unknown>).createdAt as Record<
+            string,
+            unknown
+          >) ?? {};
+        (filterQuery as Record<string, unknown>).createdAt = {
           ...existingCreatedAt,
           $gte: new Date(createdAfter),
         };
       }
       if (createdBefore) {
         const existingCreatedAt =
-          (filterQuery.createdAt as Record<string, unknown>) ?? {};
-        filterQuery.createdAt = {
+          ((filterQuery as Record<string, unknown>).createdAt as Record<
+            string,
+            unknown
+          >) ?? {};
+        (filterQuery as Record<string, unknown>).createdAt = {
           ...existingCreatedAt,
           $lte: new Date(createdBefore),
         };
@@ -362,7 +368,9 @@ export abstract class AbstractCrudService<
         (filter as Record<string, unknown>).__v = currentVersion;
       }
 
-      const updateObject: Record<string, unknown> = { ...updateCrudDto };
+      const updateObject: Record<string, unknown> = {
+        ...(updateCrudDto as Record<string, unknown>),
+      };
       if (currentVersion !== undefined) {
         updateObject.$inc = { __v: 1 };
       }
