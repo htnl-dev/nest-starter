@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SeederModule } from './database/seeders/seeder.module';
+import { CrudModule } from './crud/crud.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SeederModule } from './database/seeders/seeder.module';
       retryWrites: true,
       retryReads: true,
     }),
+    CrudModule,
     SeederModule,
   ],
   controllers: [AppController],
