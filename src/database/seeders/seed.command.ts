@@ -30,7 +30,9 @@ async function bootstrap() {
       const seeders = seederService.getSeeders();
       logger.log('Available seeders:');
       seeders.forEach((s) => {
-        logger.log(`  - ${s.name} (order: ${s.order}, production: ${s.runInProduction})`);
+        logger.log(
+          `  - ${s.name} (order: ${s.order}, production: ${s.runInProduction})`,
+        );
       });
       await app.close();
       return;

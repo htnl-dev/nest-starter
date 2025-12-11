@@ -48,7 +48,9 @@ export class SeederService {
 
     const isProduction = process.env.NODE_ENV === 'production';
     if (isProduction && !options.force) {
-      this.logger.warn('Skipping seeders in production. Use force option to override.');
+      this.logger.warn(
+        'Skipping seeders in production. Use force option to override.',
+      );
       return result;
     }
 

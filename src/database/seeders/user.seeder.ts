@@ -96,7 +96,10 @@ export class UserSeeder extends AbstractSeeder {
         existingUser.email !== userData.email;
 
       if (hasChanges) {
-        await this.userModel.updateOne({ _id: logtoUser.id }, { $set: userData });
+        await this.userModel.updateOne(
+          { _id: logtoUser.id },
+          { $set: userData },
+        );
         result.updated++;
         this.logger.debug(`Updated user: ${email}`);
       } else {
