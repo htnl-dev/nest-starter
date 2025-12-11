@@ -5,6 +5,7 @@ import { RolesService } from './services/roles.service';
 import { PermissionsService } from './services/permissions.service';
 import { OrganizationsService } from './services/organizations.service';
 import { LogtoAuthGuard } from './guards/logto-auth.guard';
+import { WebhookSignatureGuard } from './guards/webhook-signature.guard';
 import type { LogtoConfig } from './interfaces/logto-config.interface';
 
 @Module({
@@ -39,6 +40,7 @@ import type { LogtoConfig } from './interfaces/logto-config.interface';
             'LOGTO_ORGANIZATION_ID',
             '',
           ),
+          webhookSecret: configService.get<string>('LOGTO_WEBHOOK_SECRET'),
         };
       },
       inject: [ConfigService],
@@ -48,6 +50,7 @@ import type { LogtoConfig } from './interfaces/logto-config.interface';
     PermissionsService,
     OrganizationsService,
     LogtoAuthGuard,
+    WebhookSignatureGuard,
   ],
   exports: [
     'LOGTO_CONFIG',
@@ -56,6 +59,7 @@ import type { LogtoConfig } from './interfaces/logto-config.interface';
     PermissionsService,
     OrganizationsService,
     LogtoAuthGuard,
+    WebhookSignatureGuard,
   ],
 })
 export class LogtoModule {}

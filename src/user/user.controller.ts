@@ -10,6 +10,9 @@ import {
   HttpStatus,
   BadRequestException,
   Logger,
+  UseGuards,
+  ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { UserService } from './user.service';
@@ -17,6 +20,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { LogtoWebhookPayload } from './dto/logto-webhook.dto';
 import { GetCurrentUser } from '../logto/decorators/current-user.decorator';
 import { Public } from '../logto/decorators/public.decorator';
+import { WebhookSignatureGuard } from '../logto/guards/webhook-signature.guard';
 import type { CurrentUser } from './types/user.types';
 
 @ApiTags('users')
@@ -55,7 +59,9 @@ export class UserController {
   @ApiBody({ type: LogtoWebhookPayload })
   @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid webhook payload' })
+  @ApiResponse({ status: 401, description: 'Invalid webhook signature' })
   @Public()
+  @UseGuards(WebhookSignatureGuard)
   @Post('webhook/logto')
   @HttpCode(HttpStatus.OK)
   async handleLogtoWebhook(
@@ -67,13 +73,31 @@ export class UserController {
       throw new BadRequestException('Invalid Logto user ID in webhook payload');
     }
 
-    switch (payload.event) {
-      case 'User.Created':
-        await this.userService.onboardFromLogto(logtoUserId);
-        break;
+    try {
+      switch (payload.event) {
+        case 'User.Created':
+        case 'PostRegister':
+          await this.userService.onboardFromLogto(logtoUserId);
+          break;
 
-      default:
-        this.logger.warn(`Unhandled Logto webhook event: ${payload.event}`);
+        case 'User.Deleted':
+          await this.userService.removeByLogtoId(logtoUserId);
+          break;
+
+        default:
+          this.logger.debug(`Unhandled Logto webhook event: ${payload.event}`);
+      }
+    } catch (error) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
+        this.logger.debug(
+          `Webhook event ${payload.event} for user ${logtoUserId}: ${error.message}`,
+        );
+        return;
+      }
+      throw error;
     }
   }
 

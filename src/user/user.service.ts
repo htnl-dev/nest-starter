@@ -99,6 +99,16 @@ export class UserService extends AbstractService<
   }
 
   /**
+   * Remove a user by their Logto ID (same as _id)
+   */
+  async removeByLogtoId(logtoUserId: string): Promise<void> {
+    const result = await this.model.deleteOne({ _id: logtoUserId });
+    if (result.deletedCount === 0) {
+      throw new NotFoundException(`User not found: ${logtoUserId}`);
+    }
+  }
+
+  /**
    * Transform a UserDocument to a CurrentUser object
    */
   toCurrentUser(user: UserDocument): CurrentUser {

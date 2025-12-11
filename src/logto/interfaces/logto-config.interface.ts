@@ -6,4 +6,5 @@ export interface LogtoConfig {
   clientSecret: string;
   apiResourceId: string;
   organizationId: string;
+  webhookSecret?: string;
 }
