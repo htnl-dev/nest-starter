@@ -25,24 +25,6 @@ export const TRANSACTION = {
 } as const;
 
 /**
- * Queue/Job configuration
- */
-export const QUEUE = {
-  DEFAULT_BACKOFF_DELAY_MS: 5000,
-  BACKOFF_TYPE: 'exponential' as const,
-} as const;
-
-/**
- * Database timeouts
- */
-export const DATABASE = {
-  SERVER_SELECTION_TIMEOUT_MS: 5000,
-  SOCKET_TIMEOUT_MS: 45000,
-  MAX_POOL_SIZE: 10,
-  MIN_POOL_SIZE: 5,
-} as const;
-
-/**
  * HTTP status code ranges for logging
  */
 export const HTTP_STATUS = {
