@@ -6,10 +6,13 @@ import {
   Min,
   Max,
   IsDateString,
+  IsArray,
 } from 'class-validator';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import type { FilterQuery } from 'mongoose';
+
+type SelectableKeys<T> = Extract<keyof T, string>;
 
 export class QueryDto<TDocument = unknown> {
   @ApiProperty({
@@ -57,13 +60,27 @@ export class QueryDto<TDocument = unknown> {
   sort?: string;
 
   @ApiProperty({
-    description: 'Fields to select (comma-separated)',
-    example: 'name,description,createdAt',
+    description: 'Fields to select from the document',
+    example: ['name', 'description', 'createdAt'],
     required: false,
+    type: [String],
   })
-  @IsString()
+  @IsArray()
+  @IsString({ each: true })
   @IsOptional()
-  select?: string;
+  @Transform(({ value }: { value: unknown }): string[] | undefined => {
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (Array.isArray(value)) {
+      return value.filter((v): v is string => typeof v === 'string');
+    }
+    return undefined;
+  })
+  select?: SelectableKeys<TDocument>[];
 
   @ApiProperty({
     description: 'Filter by creation date (after this date)',

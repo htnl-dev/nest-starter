@@ -218,8 +218,8 @@ export abstract class AbstractCrudService<
       let queryBuilder = this.model.find(mongoQuery).session(session);
 
       // Apply select before populate to avoid conflicts
-      if (select) {
-        queryBuilder = queryBuilder.select(select.replaceAll(',', ' ')) as any;
+      if (select && select.length > 0) {
+        queryBuilder = queryBuilder.select(select.join(' ')) as any;
       } else {
         queryBuilder = queryBuilder.populate(this.populator);
       }
