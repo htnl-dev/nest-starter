@@ -6,14 +6,17 @@ import {
 } from '@nestjs/common';
 import { AbstractCrudService } from '../crud/services/crud.service';
 import { User, UserDocument } from './entities/user.entity';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, ClientSession, PopulateOptions } from 'mongoose';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, ClientSession, PopulateOptions } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { CurrentUser } from './types/user.types';
 import { LogtoUsersService } from '../logto/services/users.service';
 import { GenericCrudDocument } from '../crud/entities/crud.entity';
+import { TransactionManager } from '../crud/services/transaction.manager';
+import { QueryBuilderService } from '../crud/services/query-builder.service';
+import { OptimisticLockingService } from '../crud/services/optimistic-locking.service';
+import { EntityEventEmitter } from '../crud/services/entity-event.emitter';
 
 @Injectable()
 export class UserService extends AbstractCrudService<
@@ -22,12 +25,20 @@ export class UserService extends AbstractCrudService<
   UpdateUserDto
 > {
   constructor(
-    @InjectConnection() connection: Connection,
     @InjectModel(User.name) model: Model<UserDocument>,
+    transactionManager: TransactionManager,
+    queryBuilder: QueryBuilderService,
+    lockingService: OptimisticLockingService,
+    entityEvents: EntityEventEmitter,
     private readonly logtoUsersService: LogtoUsersService,
-    protected readonly eventEmitter?: EventEmitter2,
   ) {
-    super(connection, model, eventEmitter);
+    super(
+      model,
+      transactionManager,
+      queryBuilder,
+      lockingService,
+      entityEvents,
+    );
   }
 
   get populator(): Array<string | PopulateOptions> {
