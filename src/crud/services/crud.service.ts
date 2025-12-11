@@ -1,34 +1,32 @@
 import {
   Injectable,
-  InternalServerErrorException,
   Logger,
   NotFoundException,
   OnApplicationShutdown,
-  ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectModel } from '@nestjs/mongoose';
+import {
+  type ClientSession,
+  Model,
+  Types,
+  PopulateOptions,
+  HydratedDocument,
+} from 'mongoose';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { CreateCrudDto as AbstractCreateDto } from '../dto/create-crud.dto';
 import { UpdateCrudDto as AbstractUpdateDto } from '../dto/update-crud.dto';
 import { QueryDto } from '../dto/crud-query.dto';
 import { PaginatedResponseDto } from '../dto/paginated-response.dto';
 import { CrudEntity, GenericCrudDocument } from '../entities/crud.entity';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import {
-  type ClientSession,
-  Connection,
-  isValidObjectId,
-  Model,
-  Types,
-  PopulateOptions,
-  HydratedDocument,
-  SortOrder,
-  FilterQuery,
-  QueryWithHelpers,
-} from 'mongoose';
-import { MongoServerError } from 'mongodb';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { TransactionManager } from './transaction.manager';
+import { QueryBuilderService } from './query-builder.service';
+import { OptimisticLockingService } from './optimistic-locking.service';
+import { EntityEventEmitter } from './entity-event.emitter';
 import type { CurrentUser } from '../types/current-user.type';
+
+export interface UpdateOptions {
+  skipVersionCheck?: boolean;
+}
 
 @Injectable()
 export abstract class AbstractCrudService<
@@ -40,34 +38,36 @@ export abstract class AbstractCrudService<
   protected readonly logger = new Logger(this.constructor.name);
 
   constructor(
-    @InjectConnection() protected readonly connection: Connection,
     @InjectModel(CrudEntity.name) protected readonly model: Model<Entity>,
-    protected readonly eventEmitter?: EventEmitter2,
+    protected readonly transactionManager: TransactionManager,
+    protected readonly queryBuilder: QueryBuilderService,
+    protected readonly lockingService: OptimisticLockingService,
+    protected readonly entityEvents: EntityEventEmitter,
     protected readonly schedulerRegistry?: SchedulerRegistry,
   ) {}
 
-  onApplicationShutdown(signal?: string) {
+  onApplicationShutdown(signal?: string): void {
     this.logger.log(
       `${this.constructor.name} shutting down on signal: ${signal}`,
     );
+
     if (this.schedulerRegistry) {
       this.logger.log(`Stopping ${this.constructor.name} scheduled jobs`);
-      this.schedulerRegistry.getCronJobs().forEach((job) => {
+      for (const job of this.schedulerRegistry.getCronJobs().values()) {
         void job.stop();
-      });
+      }
       this.logger.log(`${this.constructor.name} scheduled jobs stopped`);
     }
 
     this.logger.log(`${this.constructor.name} shutdown complete`);
   }
 
+  /**
+   * Define relationships to populate on queries.
+   * Override in child services to customize population.
+   */
   get populator(): Array<string | PopulateOptions> {
-    return [
-      {
-        path: 'user',
-        select: 'firstName lastName email',
-      },
-    ];
+    return [{ path: 'user', select: 'firstName lastName email' }];
   }
 
   /**
@@ -78,213 +78,49 @@ export abstract class AbstractCrudService<
     return ['name'];
   }
 
-  protected async withSession<R>(
-    session: ClientSession | undefined,
-    fn: (session: ClientSession) => Promise<R>,
-    expectedExceptions: (new (...args: unknown[]) => Error)[] = [
-      InternalServerErrorException,
-      ConflictException,
-      BadRequestException,
-    ],
-    retries: number = 3,
-  ): Promise<R> {
-    const localSession = session ?? (await this.connection.startSession());
-    const isTransactionOwner = !session;
-    let isRetrying = false;
-
-    if (isTransactionOwner) {
-      localSession.startTransaction();
-    }
-
-    try {
-      const result = await fn(localSession);
-      if (isTransactionOwner) {
-        await localSession.commitTransaction();
-      }
-      return result;
-    } catch (e: unknown) {
-      // Check for MongoDB duplicate key error (E11000)
-      const isDuplicateKeyError =
-        e instanceof MongoServerError && e.code === 11000;
-
-      let error: unknown = e;
-      if (isDuplicateKeyError) {
-        error = new ConflictException(`${this.model.modelName} already exists`);
-      }
-
-      if (isTransactionOwner) {
-        await localSession.abortTransaction();
-      }
-
-      if (retries === 0 && isTransactionOwner) {
-        this.logger.error('Transaction failed after all retries', error);
-        throw error;
-      }
-
-      if (
-        [...expectedExceptions, NotFoundException, ConflictException].some(
-          (Exception) => error instanceof Exception,
-        )
-      ) {
-        throw error;
-      }
-
-      if (isTransactionOwner) {
-        isRetrying = true;
-        await new Promise((resolve) =>
-          setTimeout(resolve, 20 * (3 - retries + 1)),
-        );
-
-        return this.withSession(session, fn, expectedExceptions, retries - 1);
-      } else {
-        throw error;
-      }
-    } finally {
-      if (isTransactionOwner && !isRetrying) {
-        await localSession.endSession();
-      }
-    }
+  /**
+   * Get the model name for event emission and error messages
+   */
+  protected get modelName(): string {
+    return this.model.modelName;
   }
 
   async create(
-    createCrudDto: CreateDto,
+    createDto: CreateDto,
     user?: CurrentUser,
     session?: ClientSession,
-  ) {
-    return this.withSession(session, async (session) => {
+  ): Promise<HydratedDocument<Entity>> {
+    return this.transactionManager.withTransaction(session, async (session) => {
       const entity = new this.model({
-        ...createCrudDto,
+        ...createDto,
         ...(user && { user: user._id }),
       });
-      return entity
-        .save({ session })
-        .then((savedEntity) => savedEntity.populate(this.populator));
+
+      const saved = await entity.save({ session });
+      return saved.populate(this.populator);
     });
   }
 
   async findAll(
-    query: QueryDto,
+    query: QueryDto<Entity>,
     session?: ClientSession,
   ): Promise<PaginatedResponseDto<HydratedDocument<Entity>>> {
-    return this.withSession(session, async (session) => {
-      const {
-        search,
-        page = 1,
-        limit = 10,
-        sort = 'createdAt:desc',
-        createdAfter,
-        createdBefore,
-        filters,
-        select,
-        mongoQuery = {},
-      } = query;
-
-      const filterQuery: FilterQuery<Entity> = { ...mongoQuery };
-
-      if (filters) {
-        for (const [key, value] of Object.entries(filters)) {
-          if (value !== undefined) {
-            (filterQuery as Record<string, unknown>)[key] = value;
-          }
-        }
-      }
-
-      for (const [key, value] of Object.entries(filterQuery)) {
-        if (isValidObjectId(value)) {
-          (filterQuery as Record<string, unknown>)[key] = {
-            $in: [new Types.ObjectId(value as string), value as string],
-          };
-        }
-      }
-
-      // Handle text search if search parameter is provided
-      if (search) {
-        if (filterQuery.$or) {
-          (filterQuery.$or as unknown[]).push({ $text: { $search: search } });
-        } else {
-          filterQuery.$text = { $search: search };
-        }
-      }
-
-      if (createdAfter) {
-        const existingCreatedAt =
-          ((filterQuery as Record<string, unknown>).createdAt as Record<
-            string,
-            unknown
-          >) ?? {};
-        (filterQuery as Record<string, unknown>).createdAt = {
-          ...existingCreatedAt,
-          $gte: new Date(createdAfter),
-        };
-      }
-      if (createdBefore) {
-        const existingCreatedAt =
-          ((filterQuery as Record<string, unknown>).createdAt as Record<
-            string,
-            unknown
-          >) ?? {};
-        (filterQuery as Record<string, unknown>).createdAt = {
-          ...existingCreatedAt,
-          $lte: new Date(createdBefore),
-        };
-      }
-
-      // Build query
-      let queryBuilder: QueryWithHelpers<
-        HydratedDocument<Entity>[],
-        HydratedDocument<Entity>
-      > = this.model.find(filterQuery).session(session);
-
-      // Apply select before populate to avoid conflicts
-      if (select && select.length > 0) {
-        queryBuilder = queryBuilder.select(select.join(' '));
-      } else {
-        queryBuilder = queryBuilder.populate(this.populator);
-      }
-
-      // Handle sorting
-      if (sort) {
-        const sortObj: Record<string, SortOrder> = {};
-        const sortFields = sort.split(',');
-
-        for (const field of sortFields) {
-          const [key, order] = field.trim().split(':');
-          sortObj[key] = order === 'desc' ? -1 : 1;
-        }
-
-        queryBuilder = queryBuilder.sort(sortObj);
-      }
-
-      // Handle pagination
-      let skipValue = 0;
-      let limitValue = 10;
-      if (page && limit) {
-        skipValue = (page - 1) * limit;
-        limitValue = limit;
-      } else if (limit) {
-        limitValue = limit;
-      }
-
-      // Get total count for pagination metadata
-      const totalCount = await this.model
-        .countDocuments(filterQuery)
-        .session(session);
-
-      // Apply pagination
-      const results = await queryBuilder.skip(skipValue).limit(limitValue);
-
-      // Calculate pagination metadata
-      const totalPages = Math.ceil(totalCount / limitValue);
-      const currentPage = page || 1;
+    return this.transactionManager.withTransaction(session, async (session) => {
+      const queryResult = this.queryBuilder.buildQuery(query);
+      const { data, pagination } =
+        await this.queryBuilder.executePaginatedQuery(
+          this.model,
+          queryResult,
+          session,
+          {
+            select: query.select as string[],
+            populator: query.select ? undefined : this.populator,
+          },
+        );
 
       return {
-        data: results,
-        pagination: {
-          total: totalCount,
-          page: currentPage,
-          limit: limitValue,
-          totalPages,
-        },
+        data: data as HydratedDocument<Entity>[],
+        pagination,
       };
     });
   }
@@ -296,120 +132,107 @@ export abstract class AbstractCrudService<
       select?: string | string[];
       populate?: string[] | PopulateOptions | PopulateOptions[];
     },
-  ) {
-    return this.withSession(session, async (session) => {
-      let query: QueryWithHelpers<
-        HydratedDocument<Entity> | null,
-        HydratedDocument<Entity>
-      > = this.model.findById(id).session(session);
+  ): Promise<HydratedDocument<Entity>> {
+    return this.transactionManager.withTransaction(session, async (session) => {
+      let queryBuilder = this.model.findById(id).session(session);
 
-      // Apply custom select if provided
       if (options?.select) {
         const selectStr = Array.isArray(options.select)
           ? options.select.join(' ')
           : options.select;
-        query = query.select(selectStr);
+        queryBuilder = queryBuilder.select(selectStr);
       }
 
-      // Apply custom populate if provided, otherwise use default populator
-      if (options?.populate) {
-        const populateOptions = Array.isArray(options.populate)
-          ? options.populate
-          : [options.populate];
-        query = query.populate(populateOptions);
-      } else {
-        query = query.populate(this.populator);
+      const populateOptions = options?.populate ?? this.populator;
+      if (populateOptions) {
+        const populateArray = Array.isArray(populateOptions)
+          ? populateOptions
+          : [populateOptions];
+        queryBuilder = queryBuilder.populate(populateArray);
       }
 
-      const item = await query;
+      const item = await queryBuilder;
       if (!item) {
-        throw new NotFoundException(`${this.model.modelName} not found`);
+        throw new NotFoundException(`${this.modelName} not found`);
       }
 
       return item;
     });
   }
 
+  /**
+   * Get entity data for SSE updates (lightweight query)
+   */
   getUpdate(id: string | Types.ObjectId) {
     return this.model.findById(id).select(this.sseFields.join(' '));
   }
 
   /**
-   * Update an entity with optimistic locking
+   * Update an entity with optimistic locking.
    *
-   * OPTIMISTIC LOCKING:
-   * This method uses the __v field to prevent race conditions.
-   * If the entity was modified by another process since it was read,
-   * a ConflictException will be thrown and the caller should retry.
-   *
-   * To bypass optimistic locking (not recommended), pass { skipVersionCheck: true } in options.
+   * Uses the __v field to prevent race conditions. If the entity was modified
+   * by another process since it was read, a ConflictException will be thrown.
    */
   async update(
     id: string | Types.ObjectId,
-    updateCrudDto: UpdateDto,
+    updateDto: UpdateDto,
     session?: ClientSession,
-    options?: { skipVersionCheck?: boolean },
-  ) {
+    options?: UpdateOptions,
+  ): Promise<HydratedDocument<Entity>> {
     const currentEntity = await this.model
       .findById(id)
       .session(session ?? null);
 
     if (!currentEntity) {
-      throw new NotFoundException(`${this.model.modelName} not found`);
+      throw new NotFoundException(`${this.modelName} not found`);
     }
 
-    const currentVersion = options?.skipVersionCheck
-      ? undefined
-      : currentEntity.__v;
+    const currentVersion = this.lockingService.extractVersion(
+      currentEntity,
+      options?.skipVersionCheck,
+    );
 
-    const result = await this.withSession(session, async (session) => {
-      const filter: FilterQuery<Entity> = { _id: id } as FilterQuery<Entity>;
-      if (currentVersion !== undefined) {
-        (filter as Record<string, unknown>).__v = currentVersion;
-      }
+    const filter = this.lockingService.buildVersionedFilter(id, currentVersion);
+    const updateObject = this.lockingService.buildVersionedUpdate(
+      updateDto as Record<string, unknown>,
+      currentVersion,
+    );
 
-      const updateObject: Record<string, unknown> = {
-        ...(updateCrudDto as Record<string, unknown>),
-      };
-      if (currentVersion !== undefined) {
-        updateObject.$inc = { __v: 1 };
-      }
+    const result = await this.transactionManager.withTransaction(
+      session,
+      async (session) => {
+        const updated = await this.model
+          .findOneAndUpdate(filter, updateObject, { new: true, session })
+          .populate(this.populator);
 
-      const updatedResult = await this.model
-        .findOneAndUpdate(filter, updateObject, {
-          new: true,
-          session,
-        })
-        .populate(this.populator);
-
-      if (!updatedResult && currentVersion !== undefined) {
-        throw new ConflictException(
-          `${this.model.modelName} was modified by another process. Please retry.`,
+        this.lockingService.assertNotStale(
+          updated,
+          currentVersion,
+          this.modelName,
         );
-      }
 
-      if (!updatedResult) {
-        throw new NotFoundException(`${this.model.modelName} not found`);
-      }
+        if (!updated) {
+          throw new NotFoundException(`${this.modelName} not found`);
+        }
 
-      return updatedResult;
-    });
+        return updated;
+      },
+    );
 
-    if (result && this.eventEmitter) {
-      this.eventEmitter.emit(`entity.${String(result._id)}.updated`, {
-        id: result._id,
-      });
-    }
+    this.entityEvents.emitUpdated(result._id, this.modelName);
 
     return result;
   }
 
+  /**
+   * Atomically increment numeric fields
+   */
   async increment(
     id: string | Types.ObjectId,
     fields: Record<string, number>,
     session?: ClientSession,
-  ) {
-    return this.withSession(session, async (session) => {
+  ): Promise<HydratedDocument<Entity> | null> {
+    return this.transactionManager.withTransaction(session, async (session) => {
       return this.model.findByIdAndUpdate(
         id,
         { $inc: fields },
@@ -419,85 +242,85 @@ export abstract class AbstractCrudService<
   }
 
   /**
-   * Force update an entity with optimistic locking
-   *
-   * OPTIMISTIC LOCKING:
-   * This method automatically includes version checking to prevent race conditions.
-   * If the entity was modified by another process since it was read, a ConflictException
-   * will be thrown and the caller should retry the operation.
-   *
-   * To bypass optimistic locking (not recommended), pass { skipVersionCheck: true } in options.
+   * Force update an entity with direct MongoDB update operators.
+   * Supports optimistic locking and discriminator models.
    */
   async forceUpdate(
     id: string | Types.ObjectId,
     update: Partial<Entity> & Record<string, unknown>,
     session?: ClientSession,
-    options?: { skipVersionCheck?: boolean },
-  ) {
-    let model = this.model;
-    let currentVersion: number | undefined;
-
+    options?: UpdateOptions,
+  ): Promise<HydratedDocument<Entity> | null> {
     const entity = await this.model.findById(id).session(session ?? null);
 
     if (!entity) {
       return null;
     }
 
-    if (!options?.skipVersionCheck) {
-      currentVersion = entity.__v;
-    }
+    const currentVersion = this.lockingService.extractVersion(
+      entity,
+      options?.skipVersionCheck,
+    );
+    const targetModel = this.resolveDiscriminatorModel(entity);
 
-    // Handle discriminators
-    if (this.model.discriminators) {
-      const discriminatorKey = this.model.schema.get(
-        'discriminatorKey',
-      ) as string;
-      const discriminatorValue = entity.get(discriminatorKey) as string;
-      if (discriminatorValue && this.model.discriminators[discriminatorValue]) {
-        model = this.model.discriminators[discriminatorValue] as Model<Entity>;
-      }
-    }
+    const filter = this.lockingService.buildVersionedFilter(id, currentVersion);
+    const updateObject = this.lockingService.buildVersionedUpdate(
+      update as Record<string, unknown>,
+      currentVersion,
+    );
 
-    const result = await this.withSession(session, async (session) => {
-      const filter: FilterQuery<Entity> = { _id: id } as FilterQuery<Entity>;
-      if (currentVersion !== undefined) {
-        (filter as Record<string, unknown>).__v = currentVersion;
-      }
+    const result = await this.transactionManager.withTransaction(
+      session,
+      async (session) => {
+        return targetModel
+          .findOneAndUpdate(filter, updateObject, { new: true, session })
+          .populate(this.populator);
+      },
+    );
 
-      const updateObject: Record<string, unknown> = { ...update };
-      const existingInc = updateObject.$inc as
-        | Record<string, unknown>
-        | undefined;
-      if (currentVersion !== undefined && !existingInc?.__v) {
-        updateObject.$inc = { ...existingInc, __v: 1 };
-      }
+    this.lockingService.assertNotStale(result, currentVersion, this.modelName);
 
-      return model
-        .findOneAndUpdate(filter, updateObject, {
-          new: true,
-          session,
-        })
-        .populate(this.populator);
-    });
-
-    if (!result && currentVersion !== undefined) {
-      throw new ConflictException(
-        `${this.model.modelName} was modified by another process. Please retry.`,
-      );
-    }
-
-    if (result && this.eventEmitter) {
-      this.eventEmitter.emit(`entity.${String(result._id)}.updated`, {
-        id: result._id,
-      });
+    if (result) {
+      this.entityEvents.emitUpdated(result._id, this.modelName);
     }
 
     return result;
   }
 
-  async remove(id: string | Types.ObjectId, session?: ClientSession) {
-    return this.withSession(session, async (session) => {
-      return this.model.findByIdAndDelete(id, { session });
+  async remove(
+    id: string | Types.ObjectId,
+    session?: ClientSession,
+  ): Promise<HydratedDocument<Entity> | null> {
+    return this.transactionManager.withTransaction(session, async (session) => {
+      const deleted = await this.model.findByIdAndDelete(id, { session });
+
+      if (deleted) {
+        this.entityEvents.emitDeleted(deleted._id, this.modelName);
+      }
+
+      return deleted;
     });
+  }
+
+  /**
+   * Resolve the correct model for discriminator-based inheritance
+   */
+  private resolveDiscriminatorModel(entity: Entity): Model<Entity> {
+    if (!this.model.discriminators) {
+      return this.model;
+    }
+
+    const discriminatorKey = this.model.schema.get(
+      'discriminatorKey',
+    ) as string;
+    const rawValue = (entity as Record<string, unknown>)[discriminatorKey];
+    const discriminatorValue =
+      typeof rawValue === 'string' ? rawValue : undefined;
+
+    if (discriminatorValue && this.model.discriminators[discriminatorValue]) {
+      return this.model.discriminators[discriminatorValue] as Model<Entity>;
+    }
+
+    return this.model;
   }
 }
