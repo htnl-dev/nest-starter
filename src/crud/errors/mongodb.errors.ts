@@ -34,6 +34,15 @@ export class WriteConflictException extends ConflictException {
 }
 
 /**
+ * Thrown when a transient transaction error occurs (retryable)
+ */
+export class TransientTransactionException extends ConflictException {
+  constructor(message = 'Transient transaction error, please retry') {
+    super(message);
+  }
+}
+
+/**
  * Thrown when document validation fails
  */
 export class DocumentValidationException extends BadRequestException {
