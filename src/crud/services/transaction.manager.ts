@@ -34,13 +34,6 @@ export class TransactionManager {
     return this.executeWithRetry(session, fn, this.maxRetries);
   }
 
-  /**
-   * Start a new session without a transaction (useful for read operations)
-   */
-  async startSession(): Promise<ClientSession> {
-    return this.connection.startSession();
-  }
-
   private async executeWithRetry<R>(
     session: ClientSession | undefined,
     fn: (session: ClientSession) => Promise<R>,
@@ -72,11 +65,14 @@ export class TransactionManager {
         retriesLeft > 0 &&
         this.isTransientError(error)
       ) {
+        const attempt = this.maxRetries - retriesLeft + 1;
+        const delayMs = this.baseRetryDelayMs * attempt;
+        this.logger.warn(
+          `Transient error, retrying transaction (attempt ${attempt}/${this.maxRetries}, delay ${delayMs}ms)`,
+        );
         shouldEndSession = false;
         await localSession.endSession();
-        await this.delay(
-          this.baseRetryDelayMs * (this.maxRetries - retriesLeft + 1),
-        );
+        await this.delay(delayMs);
         return this.executeWithRetry(undefined, fn, retriesLeft - 1);
       }
 
