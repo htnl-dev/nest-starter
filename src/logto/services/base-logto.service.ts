@@ -39,11 +39,16 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
   implements IBaseLogtoService<T, CreateDto, UpdateDto>
 {
   protected readonly logger = new Logger(this.constructor.name);
-  protected apiClient: ReturnType<typeof createManagementApi>['apiClient'];
+  protected apiClient:
+    | ReturnType<typeof createManagementApi>['apiClient']
+    | null = null;
 
   constructor(@Inject('LOGTO_CONFIG') protected config: LogtoConfig) {
-    if (!this.config.clientId || !this.config.clientSecret) {
-      this.logger.warn('Logto credentials not fully configured');
+    if (!this.config.enabled) {
+      this.logger.warn(
+        'Logto is not configured. Set LOGTO_ENDPOINT, LOGTO_APP_ID, LOGTO_APP_SECRET, and LOGTO_API_RESOURCE_ID to enable.',
+      );
+      return;
     }
 
     const managementApiOptions: CreateManagementApiOptions = {
@@ -61,6 +66,18 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       managementApiOptions,
     );
     this.apiClient = apiClient;
+  }
+
+  get isEnabled(): boolean {
+    return this.config.enabled && this.apiClient !== null;
+  }
+
+  protected assertEnabled(): void {
+    if (!this.config.enabled || !this.apiClient) {
+      throw new InternalServerErrorException(
+        'Logto is not configured. Set LOGTO_ENDPOINT, LOGTO_APP_ID, LOGTO_APP_SECRET, and LOGTO_API_RESOURCE_ID environment variables.',
+      );
+    }
   }
 
   abstract findAll(params?: LogtoQueryParams): Promise<PaginatedResponseDto<T>>;
@@ -115,8 +132,9 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       };
     },
   ): Promise<TResponse> {
+    this.assertEnabled();
     try {
-      const apiGet = this.apiClient.GET as LogtoApiMethod;
+      const apiGet = this.apiClient!.GET as LogtoApiMethod;
       const response = await apiGet<TResponse>(path, options);
 
       if (!response.data) {
@@ -141,8 +159,9 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       body?: unknown;
     },
   ): Promise<TResponse> {
+    this.assertEnabled();
     try {
-      const apiPost = this.apiClient.POST as LogtoApiMethod;
+      const apiPost = this.apiClient!.POST as LogtoApiMethod;
       const response = await apiPost<TResponse>(path, options);
 
       if (!response.data) {
@@ -167,8 +186,9 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       body?: unknown;
     },
   ): Promise<TResponse> {
+    this.assertEnabled();
     try {
-      const apiPut = this.apiClient.PUT as LogtoApiMethod;
+      const apiPut = this.apiClient!.PUT as LogtoApiMethod;
       const response = await apiPut<TResponse>(path, options);
 
       if (!response.response.ok) {
@@ -193,8 +213,9 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       body?: unknown;
     },
   ): Promise<TResponse> {
+    this.assertEnabled();
     try {
-      const apiPatch = this.apiClient.PATCH as LogtoApiMethod;
+      const apiPatch = this.apiClient!.PATCH as LogtoApiMethod;
       const response = await apiPatch<TResponse>(path, options);
 
       if (!response.response.ok) {
@@ -218,8 +239,9 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       params?: { path?: Record<string, string> };
     },
   ): Promise<void> {
+    this.assertEnabled();
     try {
-      const apiDelete = this.apiClient.DELETE as LogtoApiMethod;
+      const apiDelete = this.apiClient!.DELETE as LogtoApiMethod;
       const response = await apiDelete<void>(path, options);
 
       if (response.error) {

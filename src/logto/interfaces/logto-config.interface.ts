@@ -1,4 +1,5 @@
 export interface LogtoConfig {
+  enabled: boolean;
   endpoint: string;
   tenantId: string;
   clientId: string;
