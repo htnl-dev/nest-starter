@@ -1,8 +1,8 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { Prop, Schema } from '@nestjs/mongoose';
 import { AbstractEntity } from '../../common/entities/abstract.entity';
+import { createSchema, Document } from '../../common/utils/schema.util';
 
-export type UserDocument = HydratedDocument<User>;
+export type UserDocument = Document<User>;
 
 @Schema({
   timestamps: true,
@@ -28,6 +28,4 @@ export class User extends AbstractEntity {
   isAdmin: boolean;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
-
-UserSchema.index({ '$**': 'text' });
+export const UserSchema = createSchema(User);
