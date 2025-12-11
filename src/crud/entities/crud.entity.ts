@@ -1,15 +1,15 @@
 import { Prop, Schema } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type CrudEntityDocument = HydratedDocument<CrudEntity>;
+export type AbstractEntityDocument = HydratedDocument<AbstractEntity>;
 
 /**
  * Generic document type that includes Mongoose version field for optimistic locking
  */
-export type GenericCrudDocument = CrudEntity & { __v: number };
+export type GenericDocument = AbstractEntity & { __v: number };
 
 @Schema()
-export abstract class CrudEntity {
+export abstract class AbstractEntity {
   @Prop({
     type: String,
     ref: 'User',

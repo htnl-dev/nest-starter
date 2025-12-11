@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { CrudEntity } from '../../crud/entities/crud.entity';
+import { AbstractEntity } from '../../crud/entities/crud.entity';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -8,7 +8,7 @@ export type UserDocument = HydratedDocument<User>;
   timestamps: true,
   _id: false,
 })
-export class User extends CrudEntity {
+export class User extends AbstractEntity {
   @Prop({ type: String, required: true, immutable: true })
   _id: string;
 
