@@ -11,42 +11,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import type { FilterQuery } from 'mongoose';
 
-/**
- * Dangerous MongoDB operators that should not be allowed from user input
- */
-const DANGEROUS_OPERATORS = [
-  '$where',
-  '$expr',
-  '$function',
-  '$accumulator',
-  '$jsonSchema',
-];
-
-/**
- * Sanitize user input to remove dangerous MongoDB operators
- */
-function sanitizeFilters(obj: unknown): Record<string, unknown> {
-  if (typeof obj !== 'object' || obj === null) {
-    return {};
-  }
-
-  const result: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (DANGEROUS_OPERATORS.includes(key)) {
-      continue;
-    }
-
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      result[key] = sanitizeFilters(value);
-    } else {
-      result[key] = value;
-    }
-  }
-
-  return result;
-}
-
 export class QueryDto<TDocument = unknown> {
   @ApiProperty({
     description: 'Search text to find in entity fields (performs text search)',
@@ -120,27 +84,27 @@ export class QueryDto<TDocument = unknown> {
   createdBefore?: string;
 
   @ApiProperty({
-    description: 'Filter object for querying (dangerous operators are stripped)',
+    description: 'Filter by document fields',
     example: { status: 'active' },
     required: false,
   })
   @IsObject()
   @IsOptional()
-  @Transform(({ value }: { value: unknown }): Record<string, unknown> => {
+  @Transform(({ value }: { value: unknown }): unknown => {
     if (typeof value === 'string') {
       try {
-        return sanitizeFilters(JSON.parse(value));
+        return JSON.parse(value) as Record<string, unknown>;
       } catch {
-        return {};
+        return value;
       }
     }
-    return sanitizeFilters(value);
+    return value;
   })
-  filters?: Record<string, unknown>;
+  filters?: Partial<TDocument>;
 
   /**
    * Internal use only - preset MongoDB query from code
-   * Not exposed via API, not sanitized
+   * Not exposed via API
    */
   mongoQuery?: FilterQuery<TDocument>;
 }
