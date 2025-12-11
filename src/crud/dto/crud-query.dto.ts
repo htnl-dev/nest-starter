@@ -9,9 +9,9 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { FilterQuery } from 'mongoose';
+import type { FilterQuery } from 'mongoose';
 
-export class QueryDto {
+export class QueryDto<TDocument = unknown> {
   @ApiProperty({
     description: 'Search text to find in entity fields (performs text search)',
     example: 'search term',
@@ -100,11 +100,11 @@ export class QueryDto {
     }
     return value;
   })
-  filters?: Record<string, unknown>;
+  filters?: FilterQuery<TDocument>;
 
   /**
    * Internal use only - preset MongoDB query from code
    * Not exposed via API
    */
-  mongoQuery?: FilterQuery<unknown>;
+  mongoQuery?: FilterQuery<TDocument>;
 }
