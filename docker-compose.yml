@@ -100,14 +100,76 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - ./logs/caddy:/var/log/caddy
-
     networks:
       - nest-starter-network
+    restart: unless-stopped
+
+  # PostgreSQL for Logto
+  nest-starter-postgres-dev:
+    image: postgres:16-alpine
+    container_name: nest-starter-postgres-dev
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-logto}
+      POSTGRES_USER: ${POSTGRES_USER:-devuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - nest-starter-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devuser} -d ${POSTGRES_DB:-logto}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # Logto authentication service
+  nest-starter-logto-dev:
+    image: ghcr.io/logto-io/logto:1.34.0
+    container_name: nest-starter-logto-dev
+    depends_on:
+      nest-starter-postgres-dev:
+        condition: service_healthy
+      nest-starter-redis-dev:
+        condition: service_started
+    entrypoint: ["sh", "-c", "npm run cli db seed -- --swe && npm run cli db alteration deploy next && npm start"]
+    ports:
+      - "${LOGTO_PORT:-3001}:3001"
+      - "${LOGTO_ADMIN_PORT:-3002}:3002"
+    environment:
+      DB_URL: postgres://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpassword}@nest-starter-postgres-dev:5432/${POSTGRES_DB:-logto}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-devredispass}@nest-starter-redis-dev:6379
+      ENDPOINT: ${LOGTO_ENDPOINT:-http://localhost:3001}
+      ADMIN_ENDPOINT: ${LOGTO_ADMIN_ENDPOINT:-http://localhost:3002}
+      NODE_ENV: development
+      TRUST_PROXY_HEADER: 1
+    networks:
+      - nest-starter-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     restart: unless-stopped
 
 volumes:
   mongodb_data_dev:
   redis_data_dev:
+  postgres_data_dev:
   caddy_data:
   caddy_config:
   nest_starter_data_dev:
