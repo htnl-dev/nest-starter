@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection, ClientSession } from 'mongoose';
 import { MongoServerError } from 'mongodb';
@@ -108,7 +112,10 @@ export class TransactionManager {
       case MongoErrorCode.EXCEEDED_TIME_LIMIT:
         return new QueryTimeoutException();
       default:
-        return error;
+        this.logger.error('Unhandled MongoDB error', error);
+        return new InternalServerErrorException(
+          'An unexpected database error occurred',
+        );
     }
   }
 
