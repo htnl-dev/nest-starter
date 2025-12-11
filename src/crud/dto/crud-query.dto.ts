@@ -7,7 +7,7 @@ import {
   Max,
   IsDateString,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import type { FilterQuery } from 'mongoose';
 
@@ -95,7 +95,7 @@ export class QueryDto<TDocument = unknown> {
       try {
         return JSON.parse(value) as Record<string, unknown>;
       } catch {
-        return value;
+        return {};
       }
     }
     return value;
@@ -106,5 +106,6 @@ export class QueryDto<TDocument = unknown> {
    * Internal use only - preset MongoDB query from code
    * Not exposed via API
    */
+  @ApiHideProperty()
   mongoQuery?: FilterQuery<TDocument>;
 }
