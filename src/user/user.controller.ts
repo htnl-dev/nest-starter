@@ -6,10 +6,15 @@ import {
   Patch,
   Param,
   Delete,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+  Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { LogtoWebhookPayload } from './dto/logto-webhook.dto';
 import { GetCurrentUser } from '../logto/decorators/current-user.decorator';
 import { Public } from '../logto/decorators/public.decorator';
 import type { CurrentUser } from './types/user.types';
@@ -17,6 +22,8 @@ import type { CurrentUser } from './types/user.types';
 @ApiTags('users')
 @Controller('users')
 export class UserController {
+  private readonly logger = new Logger(UserController.name);
+
   constructor(private readonly userService: UserService) {}
 
   @ApiOperation({ summary: 'Get current authenticated user profile' })
@@ -42,6 +49,32 @@ export class UserController {
   @Post('onboard/:logtoId')
   onboardFromLogto(@Param('logtoId') logtoId: string) {
     return this.userService.onboardFromLogto(logtoId);
+  }
+
+  @ApiOperation({ summary: 'Handle Logto webhook events' })
+  @ApiBody({ type: LogtoWebhookPayload })
+  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid webhook payload' })
+  @Public()
+  @Post('webhook/logto')
+  @HttpCode(HttpStatus.OK)
+  async handleLogtoWebhook(
+    @Body() payload: LogtoWebhookPayload,
+  ): Promise<void> {
+    const logtoUserId = payload.data?.id || payload.user?.id;
+
+    if (!logtoUserId) {
+      throw new BadRequestException('Invalid Logto user ID in webhook payload');
+    }
+
+    switch (payload.event) {
+      case 'User.Created':
+        await this.userService.onboardFromLogto(logtoUserId);
+        break;
+
+      default:
+        this.logger.warn(`Unhandled Logto webhook event: ${payload.event}`);
+    }
   }
 
   @ApiOperation({ summary: 'Get user by ID' })
