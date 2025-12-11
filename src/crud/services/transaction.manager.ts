@@ -6,6 +6,7 @@ import {
   MongoErrorCode,
   DuplicateKeyException,
   WriteConflictException,
+  TransientTransactionException,
   DocumentValidationException,
   QueryTimeoutException,
 } from '../errors/mongodb.errors';
@@ -86,6 +87,10 @@ export class TransactionManager {
   private transformError(error: unknown): Error {
     if (!(error instanceof MongoServerError)) {
       return error as Error;
+    }
+
+    if (error.errorLabels?.includes('TransientTransactionError')) {
+      return new TransientTransactionException();
     }
 
     switch (error.code) {
