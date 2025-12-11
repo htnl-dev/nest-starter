@@ -1,18 +1,10 @@
-import {
-  Injectable,
-  Logger,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, ConflictException } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection, ClientSession } from 'mongoose';
 import { MongoServerError } from 'mongodb';
 
-export interface TransactionOptions {
-  expectedExceptions?: Array<new (...args: any[]) => Error>;
-  retries?: number;
-  retryDelayMs?: number;
-}
+const MAX_RETRIES = 3;
+const BASE_RETRY_DELAY_MS = 20;
 
 @Injectable()
 export class TransactionManager {
@@ -21,27 +13,31 @@ export class TransactionManager {
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
   /**
-   * Execute a function within a MongoDB transaction with automatic retry logic.
-   *
-   * @param session - Optional existing session to use (for nested transactions)
-   * @param fn - The function to execute within the transaction
-   * @param options - Transaction options including retry configuration
-   * @returns The result of the function execution
+   * Execute a function within a MongoDB transaction.
+   * Automatically retries on transient errors (WriteConflict, TransientTransactionError).
    */
   async withTransaction<R>(
     session: ClientSession | undefined,
     fn: (session: ClientSession) => Promise<R>,
-    options?: TransactionOptions,
   ): Promise<R> {
-    const {
-      expectedExceptions = [],
-      retries = 3,
-      retryDelayMs = 20,
-    } = options ?? {};
+    return this.executeWithRetry(session, fn, MAX_RETRIES);
+  }
 
+  /**
+   * Start a new session without a transaction (useful for read operations)
+   */
+  async startSession(): Promise<ClientSession> {
+    return this.connection.startSession();
+  }
+
+  private async executeWithRetry<R>(
+    session: ClientSession | undefined,
+    fn: (session: ClientSession) => Promise<R>,
+    retriesLeft: number,
+  ): Promise<R> {
     const localSession = session ?? (await this.connection.startSession());
     const isTransactionOwner = !session;
-    let isRetrying = false;
+    let shouldEndSession = isTransactionOwner;
 
     if (isTransactionOwner) {
       localSession.startTransaction();
@@ -60,40 +56,23 @@ export class TransactionManager {
         await localSession.abortTransaction();
       }
 
-      if (
-        this.shouldThrowImmediately(
-          error,
-          expectedExceptions,
-          retries,
-          isTransactionOwner,
-        )
-      ) {
-        throw error;
+      if (isTransactionOwner && retriesLeft > 0 && this.isTransientError(e)) {
+        shouldEndSession = false;
+        await localSession.endSession();
+        await this.delay(BASE_RETRY_DELAY_MS * (MAX_RETRIES - retriesLeft + 1));
+        return this.executeWithRetry(undefined, fn, retriesLeft - 1);
       }
 
-      if (isTransactionOwner) {
-        isRetrying = true;
-        await this.delay(retryDelayMs * (4 - retries));
-        return this.withTransaction(undefined, fn, {
-          expectedExceptions,
-          retries: retries - 1,
-          retryDelayMs,
-        });
+      if (retriesLeft === 0 && isTransactionOwner) {
+        this.logger.error('Transaction failed after all retries', error);
       }
 
       throw error;
     } finally {
-      if (isTransactionOwner && !isRetrying) {
+      if (shouldEndSession) {
         await localSession.endSession();
       }
     }
-  }
-
-  /**
-   * Start a new session without a transaction (useful for read operations)
-   */
-  async startSession(): Promise<ClientSession> {
-    return this.connection.startSession();
   }
 
   private transformError(error: unknown): Error {
@@ -103,26 +82,22 @@ export class TransactionManager {
     return error as Error;
   }
 
-  private shouldThrowImmediately(
-    error: Error,
-    expectedExceptions: Array<new (...args: any[]) => Error>,
-    retries: number,
-    isTransactionOwner: boolean,
-  ): boolean {
-    if (retries === 0 && isTransactionOwner) {
-      this.logger.error('Transaction failed after all retries', error);
+  private isTransientError(error: unknown): boolean {
+    if (!(error instanceof MongoServerError)) {
+      return false;
+    }
+
+    // WriteConflict error
+    if (error.code === 112) {
       return true;
     }
 
-    const nonRetryableExceptions = [
-      ...expectedExceptions,
-      NotFoundException,
-      ConflictException,
-    ];
+    // TransientTransactionError label
+    if (error.errorLabels?.includes('TransientTransactionError')) {
+      return true;
+    }
 
-    return nonRetryableExceptions.some(
-      (Exception) => error instanceof Exception,
-    );
+    return false;
   }
 
   private delay(ms: number): Promise<void> {
