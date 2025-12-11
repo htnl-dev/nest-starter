@@ -22,6 +22,9 @@ import {
   Types,
   PopulateOptions,
   HydratedDocument,
+  SortOrder,
+  FilterQuery,
+  QueryWithHelpers,
 } from 'mongoose';
 import { MongoServerError } from 'mongodb';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -78,7 +81,7 @@ export abstract class AbstractCrudService<
   protected async withSession<R>(
     session: ClientSession | undefined,
     fn: (session: ClientSession) => Promise<R>,
-    expectedExceptions: any[] = [
+    expectedExceptions: (new (...args: unknown[]) => Error)[] = [
       InternalServerErrorException,
       ConflictException,
       BadRequestException,
@@ -99,12 +102,12 @@ export abstract class AbstractCrudService<
         await localSession.commitTransaction();
       }
       return result;
-    } catch (e) {
+    } catch (e: unknown) {
       // Check for MongoDB duplicate key error (E11000)
       const isDuplicateKeyError =
         e instanceof MongoServerError && e.code === 11000;
 
-      let error = e;
+      let error: unknown = e;
       if (isDuplicateKeyError) {
         error = new ConflictException(`${this.model.modelName} already exists`);
       }
@@ -176,17 +179,19 @@ export abstract class AbstractCrudService<
         mongoQuery = {},
       } = query;
 
+      const filterQuery: FilterQuery<Entity> = { ...mongoQuery };
+
       if (filters) {
         for (const [key, value] of Object.entries(filters)) {
           if (value !== undefined) {
-            mongoQuery[key] = value;
+            (filterQuery as Record<string, unknown>)[key] = value;
           }
         }
       }
 
-      for (const [key, value] of Object.entries(mongoQuery)) {
+      for (const [key, value] of Object.entries(filterQuery)) {
         if (isValidObjectId(value)) {
-          mongoQuery[key] = {
+          (filterQuery as Record<string, unknown>)[key] = {
             $in: [new Types.ObjectId(value as string), value as string],
           };
         }
@@ -194,39 +199,46 @@ export abstract class AbstractCrudService<
 
       // Handle text search if search parameter is provided
       if (search) {
-        if (mongoQuery.$or) {
-          mongoQuery.$or.push({ $text: { $search: search } });
+        if (filterQuery.$or) {
+          (filterQuery.$or as unknown[]).push({ $text: { $search: search } });
         } else {
-          mongoQuery.$text = { $search: search };
+          filterQuery.$text = { $search: search };
         }
       }
 
       if (createdAfter) {
-        mongoQuery.createdAt = {
-          ...mongoQuery.createdAt,
+        const existingCreatedAt =
+          (filterQuery.createdAt as Record<string, unknown>) ?? {};
+        filterQuery.createdAt = {
+          ...existingCreatedAt,
           $gte: new Date(createdAfter),
         };
       }
       if (createdBefore) {
-        mongoQuery.createdAt = {
-          ...mongoQuery.createdAt,
+        const existingCreatedAt =
+          (filterQuery.createdAt as Record<string, unknown>) ?? {};
+        filterQuery.createdAt = {
+          ...existingCreatedAt,
           $lte: new Date(createdBefore),
         };
       }
 
       // Build query
-      let queryBuilder = this.model.find(mongoQuery).session(session);
+      let queryBuilder: QueryWithHelpers<
+        HydratedDocument<Entity>[],
+        HydratedDocument<Entity>
+      > = this.model.find(filterQuery).session(session);
 
       // Apply select before populate to avoid conflicts
       if (select && select.length > 0) {
-        queryBuilder = queryBuilder.select(select.join(' ')) as any;
+        queryBuilder = queryBuilder.select(select.join(' '));
       } else {
         queryBuilder = queryBuilder.populate(this.populator);
       }
 
       // Handle sorting
       if (sort) {
-        const sortObj: any = {};
+        const sortObj: Record<string, SortOrder> = {};
         const sortFields = sort.split(',');
 
         for (const field of sortFields) {
@@ -249,7 +261,7 @@ export abstract class AbstractCrudService<
 
       // Get total count for pagination metadata
       const totalCount = await this.model
-        .countDocuments(mongoQuery)
+        .countDocuments(filterQuery)
         .session(session);
 
       // Apply pagination
@@ -280,14 +292,17 @@ export abstract class AbstractCrudService<
     },
   ) {
     return this.withSession(session, async (session) => {
-      let query = this.model.findById(id).session(session);
+      let query: QueryWithHelpers<
+        HydratedDocument<Entity> | null,
+        HydratedDocument<Entity>
+      > = this.model.findById(id).session(session);
 
       // Apply custom select if provided
       if (options?.select) {
         const selectStr = Array.isArray(options.select)
           ? options.select.join(' ')
           : options.select;
-        query = query.select(selectStr) as any;
+        query = query.select(selectStr);
       }
 
       // Apply custom populate if provided, otherwise use default populator
@@ -342,12 +357,12 @@ export abstract class AbstractCrudService<
       : currentEntity.__v;
 
     const result = await this.withSession(session, async (session) => {
-      const filter: Record<string, any> = { _id: id };
+      const filter: FilterQuery<Entity> = { _id: id } as FilterQuery<Entity>;
       if (currentVersion !== undefined) {
-        filter.__v = currentVersion;
+        (filter as Record<string, unknown>).__v = currentVersion;
       }
 
-      const updateObject: Record<string, any> = { ...updateCrudDto };
+      const updateObject: Record<string, unknown> = { ...updateCrudDto };
       if (currentVersion !== undefined) {
         updateObject.$inc = { __v: 1 };
       }
@@ -407,7 +422,7 @@ export abstract class AbstractCrudService<
    */
   async forceUpdate(
     id: string | Types.ObjectId,
-    update: Partial<Entity & Record<string, any>>,
+    update: Partial<Entity> & Record<string, unknown>,
     session?: ClientSession,
     options?: { skipVersionCheck?: boolean },
   ) {
@@ -436,14 +451,17 @@ export abstract class AbstractCrudService<
     }
 
     const result = await this.withSession(session, async (session) => {
-      const filter: Record<string, any> = { _id: id };
+      const filter: FilterQuery<Entity> = { _id: id } as FilterQuery<Entity>;
       if (currentVersion !== undefined) {
-        filter.__v = currentVersion;
+        (filter as Record<string, unknown>).__v = currentVersion;
       }
 
-      const updateObject: Record<string, any> = { ...update };
-      if (currentVersion !== undefined && !updateObject.$inc?.__v) {
-        updateObject.$inc = { ...updateObject.$inc, __v: 1 };
+      const updateObject: Record<string, unknown> = { ...update };
+      const existingInc = updateObject.$inc as
+        | Record<string, unknown>
+        | undefined;
+      if (currentVersion !== undefined && !existingInc?.__v) {
+        updateObject.$inc = { ...existingInc, __v: 1 };
       }
 
       return model
