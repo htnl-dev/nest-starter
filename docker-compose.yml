@@ -68,7 +68,7 @@ services:
       target: development
     container_name: nest-starter-api-dev
     ports:
-      - "${API_PORT:-5050}:3000"
+      - "${API_PORT:-5050}:${API_PORT:-5050}"
     volumes:
       - ./:/usr/src/app
       - /usr/src/app/node_modules

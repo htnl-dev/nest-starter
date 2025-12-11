@@ -7,6 +7,7 @@ import { SeederModule } from './database/seeders/seeder.module';
 import { CrudModule } from './crud/crud.module';
 import { UserModule } from './user/user.module';
 import { LogtoModule } from './logto/logto.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { LogtoModule } from './logto/logto.module';
     LogtoModule,
     UserModule,
     SeederModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
