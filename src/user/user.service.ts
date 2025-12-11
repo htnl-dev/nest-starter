@@ -94,7 +94,6 @@ export class UserService extends AbstractService<
       firstName,
       lastName,
       email,
-      logtoId: logtoUserId,
       isAdmin: false,
     });
   }

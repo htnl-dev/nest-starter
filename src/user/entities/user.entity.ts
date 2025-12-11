@@ -22,9 +22,6 @@ export class User extends AbstractEntity {
   @Prop({ required: true, index: true, unique: true })
   email: string;
 
-  @Prop({ unique: true, required: true, index: true })
-  logtoId: string;
-
   @Prop({ default: false })
   isAdmin: boolean;
 }

@@ -85,7 +85,6 @@ export class UserSeeder extends AbstractSeeder {
       firstName: logtoUser.profile?.givenName || logtoUser.name || '',
       lastName: logtoUser.profile?.familyName || '',
       email,
-      logtoId: logtoUser.id,
     };
 
     if (existingUser) {

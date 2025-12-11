@@ -23,13 +23,6 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({
-    description: 'Logto user ID (external identity provider ID)',
-    example: 'usr_abc123xyz',
-  })
-  @IsString()
-  logtoId: string;
-
   @ApiPropertyOptional({
     description: 'Whether the user has admin privileges',
     example: false,
