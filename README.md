@@ -21,7 +21,6 @@ A production-ready NestJS starter template with Docker, PM2, and best practices 
 - 🔧 **Environment Configuration** - Secure configuration management
 - 🏗️ **Abstract CRUD System** - Reusable base classes for entities, services, and controllers
 - 🔍 **Advanced Querying** - Built-in pagination, search, sorting, and filtering
-- 🏷️ **Slug Support** - Automatic slug generation for SEO-friendly URLs
 - 💾 **MongoDB Integration** - Mongoose with transaction support and retry logic
 
 ## 🚀 Quick Start
@@ -275,6 +274,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AbstractService } from './src/common/services/abstract.service';
+import { TransactionManager } from './src/common/services/transaction.manager';
 import { Product, ProductDocument } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -285,8 +285,11 @@ export class ProductService extends AbstractService<
   CreateProductDto,
   UpdateProductDto
 > {
-  constructor(@InjectModel(Product.name) model: Model<ProductDocument>) {
-    super(model);
+  constructor(
+    @InjectModel(Product.name) model: Model<ProductDocument>,
+    transactionManager: TransactionManager,
+  ) {
+    super(model, transactionManager);
   }
 
   // Override populator if needed
@@ -379,46 +382,6 @@ await service.increment(id, {
   'metrics.totalClicks': 5
 });
 ```
-
-### 🏷️ Slug-Aware Entities
-
-For entities that need SEO-friendly URLs, extend the `SlugEntity`:
-
-#### Slug Entity
-```typescript
-import { Schema } from '@nestjs/mongoose';
-import { SlugEntity } from './src/common/entities/slug.entity';
-
-@Schema()
-export class Product extends SlugEntity {
-  // automatically gets a slug generated based on the product name
-}
-```
-
-#### Slug Service
-```typescript
-import { Injectable } from '@nestjs/common';
-import { SlugAwareService } from './src/common/services/slug-aware.service';
-
-@Injectable()
-export class ProductService extends SlugAwareService<
-  ProductDocument,
-  CreateProductDto,
-  UpdateProductDto
-> {
-  constructor(@InjectModel(Product.name) model: Model<ProductDocument>) {
-    super(model);
-  }
-
-  // Override slug source field (defaults to 'name')
-  slugSource = 'sku';
-}
-```
-
-**Slug features:**
-- Automatic slug generation from a source field (default: `name`)
-- Unique slug enforcement with automatic suffixes
-- Find by ID or slug: `findOne('my-slug')` or `findOne('507f1f77bcf86cd799439011')`
 
 ### 🔍 Advanced Querying
 
