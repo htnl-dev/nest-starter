@@ -36,22 +36,26 @@ export abstract class AbstractController<
   }
 
   @Get()
-  findMany(@Query() query: QueryDto) {
-    return this.service.findMany(query);
+  findMany(@Query() query: QueryDto, user?: CurrentUser) {
+    return this.service.findMany(query, user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Param('id') id: string, user?: CurrentUser) {
+    return this.service.findOne(id, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: UpdateDto) {
-    return this.service.update(id, updateDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateDto,
+    user?: CurrentUser,
+  ) {
+    return this.service.update(id, updateDto, user);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  remove(@Param('id') id: string, user?: CurrentUser) {
+    return this.service.remove(id, user);
   }
 }

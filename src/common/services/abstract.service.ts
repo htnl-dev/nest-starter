@@ -94,6 +94,7 @@ export abstract class AbstractService<
 
   async findMany(
     query: QueryDto<Entity>,
+    currentUser?: CurrentUser,
     session?: ClientSession,
   ): Promise<PaginatedResponseDto<HydratedDocument<Entity>>> {
     return this.transactionManager.withTransaction(session, async (session) => {
@@ -117,6 +118,7 @@ export abstract class AbstractService<
 
   async findOne(
     id: string | Types.ObjectId,
+    currentUser?: CurrentUser,
     session?: ClientSession,
     options?: {
       select?: string | string[];
@@ -160,6 +162,7 @@ export abstract class AbstractService<
   async update(
     id: string | Types.ObjectId,
     updateDto: UpdateDto,
+    currentUser?: CurrentUser,
     session?: ClientSession,
   ): Promise<HydratedDocument<Entity>> {
     return this.transactionManager.withTransaction(session, async (session) => {
@@ -181,6 +184,7 @@ export abstract class AbstractService<
   async increment(
     id: string | Types.ObjectId,
     fields: Record<string, number>,
+    currentUser?: CurrentUser,
     session?: ClientSession,
   ): Promise<HydratedDocument<Entity> | null> {
     return this.transactionManager.withTransaction(session, async (session) => {
@@ -199,6 +203,7 @@ export abstract class AbstractService<
   async forceUpdate(
     id: string | Types.ObjectId,
     update: Partial<Entity> & Record<string, unknown>,
+    currentUser?: CurrentUser,
     session?: ClientSession,
   ): Promise<HydratedDocument<Entity> | null> {
     const entity = await this.model.findById(id).session(session ?? null);
@@ -218,6 +223,7 @@ export abstract class AbstractService<
 
   async remove(
     id: string | Types.ObjectId,
+    currentUser?: CurrentUser,
     session?: ClientSession,
   ): Promise<HydratedDocument<Entity> | null> {
     return this.transactionManager.withTransaction(session, async (session) => {

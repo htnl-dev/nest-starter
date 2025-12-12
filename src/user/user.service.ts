@@ -38,6 +38,7 @@ export class UserService extends AbstractService<
    */
   async findOne(
     idOrEmail: string,
+    currentUser?: CurrentUser,
     session?: ClientSession,
     options?: {
       select?: string | string[];
