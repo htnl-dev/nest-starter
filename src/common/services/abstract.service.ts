@@ -62,14 +62,6 @@ export abstract class AbstractService<
   }
 
   /**
-   * Define which fields should be included in Server-Sent Events (SSE) updates.
-   * Override in child services to specify the most important fields for real-time updates.
-   */
-  get sseFields(): string[] {
-    return ['name'];
-  }
-
-  /**
    * Get the model name for error messages
    */
   protected get modelName(): string {
@@ -150,13 +142,6 @@ export abstract class AbstractService<
 
       return item;
     });
-  }
-
-  /**
-   * Get entity data for SSE updates (lightweight query)
-   */
-  getUpdate(id: string | Types.ObjectId) {
-    return this.model.findById(id).select(this.sseFields.join(' '));
   }
 
   async update(
