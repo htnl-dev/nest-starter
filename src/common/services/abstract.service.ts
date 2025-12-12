@@ -92,7 +92,7 @@ export abstract class AbstractService<
     });
   }
 
-  async findAll(
+  async findMany(
     query: QueryDto<Entity>,
     session?: ClientSession,
   ): Promise<PaginatedResponseDto<HydratedDocument<Entity>>> {

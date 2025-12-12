@@ -336,7 +336,7 @@ This automatically makes the following endpoints available:
 | Method | Description | Usage |
 |--------|-------------|--------|
 | `create(dto, user?, session?)` | Creates a new entity | Basic entity creation |
-| `findAll(query, session?)` | Retrieves entities with pagination | List entities with filters |
+| `findMany(query, session?)` | Retrieves entities with pagination | List entities with filters |
 | `findOne(id, session?)` | Retrieves a single entity | Get entity by ID |
 | `remove(id, session?)` | Deletes an entity | Delete entity |
 
@@ -385,7 +385,7 @@ await service.increment(id, {
 
 ### 🔍 Advanced Querying
 
-The `findAll` method supports comprehensive querying options:
+The `findMany` method supports comprehensive querying options:
 
 #### Query Parameters
 
@@ -409,7 +409,7 @@ const query = {
   metadata: { category: 'tech' }
 };
 
-const result = await service.findAll(query);
+const result = await service.findMany(query);
 ```
 
 #### Response Format

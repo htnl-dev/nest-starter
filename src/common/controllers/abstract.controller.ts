@@ -36,8 +36,8 @@ export abstract class AbstractController<
   }
 
   @Get()
-  findAll(@Query() query: QueryDto) {
-    return this.service.findAll(query);
+  findMany(@Query() query: QueryDto) {
+    return this.service.findMany(query);
   }
 
   @Get(':id')
