@@ -242,21 +242,21 @@ This template includes a powerful abstract CRUD system that provides reusable ba
 
 ### 📋 Core Components
 
-#### Base Entity (`CrudEntity`)
+#### Base Entity (`AbstractEntity`)
 
 The base abstract entity provides common fields for all entities:
 
 ```typescript
 import { Schema } from '@nestjs/mongoose';
-import { CrudEntity } from './src/crud/entities/crud.entity';
+import { AbstractEntity } from './src/common/entities/abstract.entity';
 
 @Schema()
-export class Product extends CrudEntity {
+export class Product extends AbstractEntity {
   // already auto inherited name, description and metadata
   // Your custom fields here
   @Prop()
   sku: string;
- 
+
 }
 ```
 
@@ -266,27 +266,27 @@ export class Product extends CrudEntity {
 - `description`: Entity description (optional) 
 - `metadata`: Flexible key-value storage (optional)
 
-#### Base Service (`AbstractCrudService`)
+#### Base Service (`AbstractService`)
 
-The abstract service provides complete CRUD operations with MongoDB transaction support ensuring that an operation wholly succees or fails:
+The abstract service provides complete CRUD operations with MongoDB transaction support ensuring that an operation wholly succeeds or fails:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { AbstractCrudService } from './src/crud/services/crud.service';
-import { MyEntity } from './entities/my.entity';
-import { CreateMyDto } from './dto/create-my.dto';
-import { UpdateMyDto } from './dto/update-my.dto';
+import { AbstractService } from './src/common/services/abstract.service';
+import { Product, ProductDocument } from './entities/product.entity';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
-export class Sale extends AbstractCrudService<
-  Product,
+export class ProductService extends AbstractService<
+  ProductDocument,
   CreateProductDto,
   UpdateProductDto
 > {
-  constructor(@InjectModel(MyEntity.name) model: Model<MyEntity>) {
-    super(connection, model);
+  constructor(@InjectModel(Product.name) model: Model<ProductDocument>) {
+    super(model);
   }
 
   // Override populator if needed
@@ -296,35 +296,35 @@ export class Sale extends AbstractCrudService<
 }
 ```
 
-#### Base Controller (`AbstractCrudController`)
+#### Base Controller (`AbstractController`)
 
 The abstract controller provides standard REST endpoints:
 
 ```typescript
 import { Controller } from '@nestjs/common';
-import { AbstractCrudController } from './src/crud/controllers/crud.controller';
-import { MyEntity } from './entities/my.entity';
-import { MyService } from './services/my.service';
-import { CreateMyDto } from './dto/create-my.dto';
-import { UpdateMyDto } from './dto/update-my.dto';
+import { AbstractController } from './src/common/controllers/abstract.controller';
+import { ProductDocument } from './entities/product.entity';
+import { ProductService } from './services/product.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
-@Controller('sales')
-export class Sale extends AbstractCrudController<
-  MyEntity,
-  CreateMyDto,
-  UpdateMyDto
+@Controller('products')
+export class ProductController extends AbstractController<
+  ProductDocument,
+  CreateProductDto,
+  UpdateProductDto
 > {
-  constructor(private readonly myService: MyService) {
-    super(myService);
+  constructor(private readonly productService: ProductService) {
+    super(productService);
   }
 }
 ```
-This automatically makes the following endpoints availabe
-POST `/sales`
-GET `/sales`
-GET `/sales/:id`
-PATCH `/sales/:id`
-DELETE `/sales/:id`
+
+This automatically makes the following endpoints available:
+- `POST /products` - Create a new product
+- `GET /products` - List products with pagination
+- `GET /products/:id` - Get a product by ID
+- `PATCH /products/:id` - Update a product
 
 ### 🔧 Service Methods Explained
 
@@ -382,32 +382,32 @@ await service.increment(id, {
 
 ### 🏷️ Slug-Aware Entities
 
-For entities that need SEO-friendly URLs, extend the `SlugCrudEntity`:
+For entities that need SEO-friendly URLs, extend the `SlugEntity`:
 
 #### Slug Entity
 ```typescript
 import { Schema } from '@nestjs/mongoose';
-import { SlugCrudEntity } from './src/crud/entities/slug-crud.entity';
+import { SlugEntity } from './src/common/entities/slug.entity';
 
 @Schema()
-export class Product extends SlugCrudEntity {
- // auto ge'ts a crud generated based on the product name
+export class Product extends SlugEntity {
+  // automatically gets a slug generated based on the product name
 }
 ```
 
-#### Slug Service  
+#### Slug Service
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { SlugAwareCrudService } from './src/crud/services/slug-crud.service';
+import { SlugAwareService } from './src/common/services/slug-aware.service';
 
 @Injectable()
-export class MySlugService extends SlugAwareCrudService<
-  MySlugEntity,
-  CreateMySlugDto,
-  UpdateMySlugDto
+export class ProductService extends SlugAwareService<
+  ProductDocument,
+  CreateProductDto,
+  UpdateProductDto
 > {
-  constructor(@InjectModel(MySlugEntity.name) model: Model<MySlugEntity>) {
-    super(connection, model);
+  constructor(@InjectModel(Product.name) model: Model<ProductDocument>) {
+    super(model);
   }
 
   // Override slug source field (defaults to 'name')
@@ -490,21 +490,21 @@ The abstract service includes automatic retry logic and session management throu
 
 #### Base DTOs
 
-**CreateCrudDto:**
+**AbstractCreateDto:**
 ```typescript
 {
   name: string;              // Required
   description?: string;      // Optional
   user?: Types.ObjectId;     // Optional (auto-set from auth)
-  metadata?: Record<string, any>; // Optional
+  metadata?: Record<string, unknown>; // Optional
 }
 ```
 
-**UpdateCrudDto:**
+**AbstractUpdateDto:**
 ```typescript
 {
   description?: string;      // Optional
-  metadata?: Record<string, any>; // Optional
+  metadata?: Record<string, unknown>; // Optional
 }
 ```
 
@@ -513,10 +513,10 @@ The abstract service includes automatic retry logic and session management throu
 {
   search?: string;           // Text search
   page?: number;             // Page number (min: 1)
-  limit?: number;            // Items per page (1-100)  
+  limit?: number;            // Items per page (1-100)
   sort?: string;             // Sort format: "field:order"
-  [key: string]: any;        // Additional filters
-  metadata?: Record<string, any>; // Metadata filters
+  [key: string]: unknown;    // Additional filters
+  metadata?: Record<string, unknown>; // Metadata filters
 }
 ```
 
@@ -548,6 +548,7 @@ LOGTO_APP_ID=your-app-id
 LOGTO_APP_SECRET=your-app-secret
 LOGTO_API_RESOURCE_ID=your-api-resource-id
 LOGTO_ORGANIZATION_ID=your-organization-id
+LOGTO_WEBHOOK_SECRET=your-webhook-signing-key
 ```
 
 ### Services
@@ -596,6 +597,27 @@ export class ProtectedController {
 | `@Public()` | Marks a route as publicly accessible |
 | `@Scopes(...scopes)` | Requires specific permission scopes |
 | `@GetCurrentUser()` | Injects the authenticated user into route handler |
+
+### Webhooks
+
+The template includes a webhook endpoint for Logto events with signature verification.
+
+**Endpoint:** `POST /users/webhook/logto`
+
+**Supported Events:**
+| Event | Action |
+|-------|--------|
+| `User.Created` | Onboard user (via Management API) |
+| `PostRegister` | Onboard user (via sign-up UI) |
+
+**Setup:**
+1. In Logto Console, go to Webhooks and create a new webhook
+2. Set the endpoint URL to `https://your-domain.com/users/webhook/logto`
+3. Select the events you want to receive
+4. Copy the signing key and set it as `LOGTO_WEBHOOK_SECRET` in your environment
+
+**Signature Verification:**
+The webhook endpoint verifies the `logto-signature-sha-256` header using HMAC-SHA256. If `LOGTO_WEBHOOK_SECRET` is not configured, signature verification is skipped (with a warning).
 
 ## 📚 Resources
 
