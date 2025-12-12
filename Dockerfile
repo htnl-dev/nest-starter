@@ -1,5 +1,5 @@
 # Development stage
-FROM node:20-alpine AS development
+FROM node:22-alpine AS development
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -12,7 +12,7 @@ CMD ["npm", "run", "start:dev"]
 
 
 # Production build stage
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -22,7 +22,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 WORKDIR /usr/src/app
 
 RUN npm install -g pm2

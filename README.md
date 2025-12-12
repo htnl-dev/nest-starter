@@ -28,7 +28,7 @@ A production-ready NestJS starter template with Docker, PM2, and best practices 
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 22+ and npm
 - Docker and Docker Compose (optional)
 - Git
 
