@@ -160,6 +160,40 @@ export abstract class AbstractService<
   }
 
   /**
+   * Fields to exclude from query responses.
+   * Automatically extracts fields with `select: false` from the schema,
+   * including nested schemas.
+   */
+  get excludeFields(): string[] {
+    const excluded: string[] = [];
+    this.collectExcludedFields(this.model.schema, '', excluded);
+    return excluded;
+  }
+
+  private collectExcludedFields(
+    schema: typeof this.model.schema,
+    prefix: string,
+    excluded: string[],
+  ): void {
+    schema.eachPath((path, schemaType) => {
+      const fullPath = prefix ? `${prefix}.${path}` : path;
+
+      if (schemaType.options?.select === false) {
+        excluded.push(fullPath);
+      }
+
+      // Recursively check nested schemas
+      if ('schema' in schemaType && schemaType.schema) {
+        this.collectExcludedFields(
+          schemaType.schema as typeof this.model.schema,
+          fullPath,
+          excluded,
+        );
+      }
+    });
+  }
+
+  /**
    * Find one entity using aggregation with $lookup instead of populate.
    * More efficient for complex populates as it runs in a single query.
    */
@@ -176,11 +210,22 @@ export abstract class AbstractService<
 
     if (options?.select) {
       const fields = options.select.split(' ').filter(Boolean);
-      const projection: Record<string, 1> = {};
+      const projection: Record<string, 0 | 1> = {};
       for (const field of fields) {
         projection[field] = 1;
       }
+      // Also exclude sensitive fields
+      for (const field of this.excludeFields) {
+        projection[field] = 0;
+      }
       pipeline.push({ $project: projection } as PipelineStage);
+    } else if (this.excludeFields.length > 0) {
+      // Exclude sensitive fields even without explicit select
+      const exclusion: Record<string, 0> = {};
+      for (const field of this.excludeFields) {
+        exclusion[field] = 0;
+      }
+      pipeline.push({ $project: exclusion } as PipelineStage);
     }
 
     const results = await this.model
@@ -225,11 +270,22 @@ export abstract class AbstractService<
         const fields = Array.isArray(query.select)
           ? query.select
           : (query.select as string).split(' ').filter(Boolean);
-        const projection: Record<string, 1> = {};
+        const projection: Record<string, 0 | 1> = {};
         for (const field of fields) {
           projection[field] = 1;
         }
+        // Also exclude sensitive fields
+        for (const field of this.excludeFields) {
+          projection[field] = 0;
+        }
         pipeline.push({ $project: projection } as PipelineStage);
+      } else if (this.excludeFields.length > 0) {
+        // Exclude sensitive fields even without explicit select
+        const exclusion: Record<string, 0> = {};
+        for (const field of this.excludeFields) {
+          exclusion[field] = 0;
+        }
+        pipeline.push({ $project: exclusion } as PipelineStage);
       }
 
       pipeline.push({ $sort: sortOptions } as PipelineStage);
