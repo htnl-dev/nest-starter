@@ -159,6 +159,37 @@ export abstract class AbstractService<
     return [];
   }
 
+  /**
+   * Find one entity using aggregation with $lookup instead of populate.
+   * More efficient for complex populates as it runs in a single query.
+   */
+  async findOneWithLookup(
+    id: string | Types.ObjectId,
+    session?: ClientSession,
+    options?: { select?: string },
+  ): Promise<Entity | null> {
+    const pipeline: PipelineStage[] = [
+      { $match: { _id: new Types.ObjectId(id.toString()) } },
+      ...this.buildLookupPipeline(),
+      ...this.buildVirtualsPipeline(),
+    ];
+
+    if (options?.select) {
+      const fields = options.select.split(' ').filter(Boolean);
+      const projection: Record<string, 1> = {};
+      for (const field of fields) {
+        projection[field] = 1;
+      }
+      pipeline.push({ $project: projection } as PipelineStage);
+    }
+
+    const results = await this.model
+      .aggregate(pipeline)
+      .session(session ?? null);
+
+    return (results[0] as Entity) ?? null;
+  }
+
   async create(
     createDto: CreateDto,
     user?: CurrentUser,
