@@ -285,17 +285,19 @@ export abstract class AbstractService<
     updateDto: UpdateDto,
     currentUser?: CurrentUser,
     session?: ClientSession,
-  ): Promise<HydratedDocument<Entity>> {
+  ): Promise<Entity> {
     return this.transactionManager.withTransaction(session, async (session) => {
-      const updated = await this.model
-        .findByIdAndUpdate(id, updateDto, { new: true, session })
-        .populate(this.populator);
+      const updated = await this.model.findByIdAndUpdate(id, updateDto, {
+        new: true,
+        session,
+      });
 
       if (!updated) {
         throw new NotFoundException(`${this.modelName} not found`);
       }
 
-      return updated;
+      const populated = await this.findOneWithLookup(updated._id, session);
+      return populated ?? (updated as unknown as Entity);
     });
   }
 
