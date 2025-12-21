@@ -237,33 +237,24 @@ export abstract class AbstractService<
     session?: ClientSession,
     options?: {
       select?: string | string[];
-      populate?: string[] | PopulateOptions | PopulateOptions[];
     },
-  ): Promise<HydratedDocument<Entity>> {
+  ): Promise<Entity> {
     return this.transactionManager.withTransaction(session, async (session) => {
-      let queryBuilder = this.model.findById(id).session(session);
-
-      if (options?.select) {
-        const selectStr = Array.isArray(options.select)
+      const selectStr = options?.select
+        ? Array.isArray(options.select)
           ? options.select.join(' ')
-          : options.select;
-        queryBuilder = queryBuilder.select(selectStr);
-      }
+          : options.select
+        : undefined;
 
-      const populateOptions = options?.populate ?? this.populator;
-      if (populateOptions) {
-        const populateArray = Array.isArray(populateOptions)
-          ? populateOptions
-          : [populateOptions];
-        queryBuilder = queryBuilder.populate(populateArray);
-      }
+      const result = await this.findOneWithLookup(id, session, {
+        select: selectStr,
+      });
 
-      const item = await queryBuilder;
-      if (!item) {
+      if (!result) {
         throw new NotFoundException(`${this.modelName} not found`);
       }
 
-      return item;
+      return result;
     });
   }
 
