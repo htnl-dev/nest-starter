@@ -44,7 +44,9 @@ export class TransactionManager {
     let shouldEndSession = isTransactionOwner;
 
     if (isTransactionOwner) {
-      localSession.startTransaction();
+      localSession.startTransaction({
+        readPreference: 'primary',
+      });
     }
 
     try {
