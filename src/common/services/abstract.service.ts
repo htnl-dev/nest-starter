@@ -12,6 +12,18 @@ import {
   PopulateOptions,
   HydratedDocument,
 } from 'mongoose';
+
+/**
+ * Extended populate options that includes collection name for $lookup.
+ * Unlike Mongoose populate, collection name is required for aggregation.
+ */
+export interface LookupPopulateOptions
+  extends Omit<PopulateOptions, 'populate'> {
+  /** MongoDB collection name for $lookup (e.g., 'users', 'currencies') - REQUIRED */
+  collection: string;
+  /** Nested populate options */
+  populate?: LookupPopulateOptions | LookupPopulateOptions[] | string;
+}
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { AbstractCreateDto } from '../dto/abstract-create.dto';
 import { AbstractUpdateDto } from '../dto/abstract-update.dto';
@@ -54,11 +66,14 @@ export abstract class AbstractService<
   }
 
   /**
-   * Define relationships to populate on queries.
+   * Define relationships to populate on queries using $lookup aggregation.
    * Override in child services to customize population.
+   * Collection name is required for each population path.
    */
-  get populator(): Array<string | PopulateOptions> {
-    return [{ path: 'user', select: 'firstName lastName email' }];
+  get populator(): LookupPopulateOptions[] {
+    return [
+      { path: 'user', collection: 'users', select: 'firstName lastName email' },
+    ];
   }
 
   /**

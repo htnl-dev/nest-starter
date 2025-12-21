@@ -7,7 +7,8 @@ import {
 import { AbstractService } from '../common/services/abstract.service';
 import { User, UserDocument } from './entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ClientSession, PopulateOptions } from 'mongoose';
+import { Model, ClientSession } from 'mongoose';
+import { LookupPopulateOptions } from '../common/services/abstract.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { CurrentUser } from './types/user.types';
@@ -29,7 +30,7 @@ export class UserService extends AbstractService<
     super(model, transactionManager);
   }
 
-  get populator(): Array<string | PopulateOptions> {
+  get populator(): LookupPopulateOptions[] {
     return [];
   }
 
@@ -42,7 +43,6 @@ export class UserService extends AbstractService<
     session?: ClientSession,
     options?: {
       select?: string | string[];
-      populate?: string[] | PopulateOptions | PopulateOptions[];
     },
   ) {
     const user = await this.model
@@ -53,8 +53,7 @@ export class UserService extends AbstractService<
         {},
         { session },
       )
-      .select(options?.select || '')
-      .populate(options?.populate || this.populator);
+      .select(options?.select || '');
 
     if (!user) {
       throw new NotFoundException(`User not found: ${idOrEmail}`);
