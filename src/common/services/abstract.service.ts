@@ -194,7 +194,7 @@ export abstract class AbstractService<
     createDto: CreateDto,
     user?: CurrentUser,
     session?: ClientSession,
-  ): Promise<HydratedDocument<Entity>> {
+  ): Promise<Entity> {
     return this.transactionManager.withTransaction(session, async (session) => {
       const entity = new this.model({
         ...createDto,
@@ -202,7 +202,8 @@ export abstract class AbstractService<
       });
 
       const saved = await entity.save({ session });
-      return saved.populate(this.populator);
+      const populated = await this.findOneWithLookup(saved._id, session);
+      return populated ?? (saved as unknown as Entity);
     });
   }
 
