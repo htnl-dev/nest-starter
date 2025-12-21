@@ -7,10 +7,10 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import {
   type ClientSession,
+  HydratedDocument,
   Model,
   Types,
   PopulateOptions,
-  HydratedDocument,
   PipelineStage,
 } from 'mongoose';
 
@@ -32,7 +32,7 @@ import { QueryDto } from '../dto/query.dto';
 import { PaginatedResponseDto } from '../dto/paginated-response.dto';
 import { AbstractEntity, GenericDocument } from '../entities/abstract.entity';
 import { TransactionManager } from './transaction.manager';
-import { buildQuery, executePaginatedQuery } from '../utils/query-builder.util';
+import { buildQuery } from '../utils/query-builder.util';
 import type { CurrentUser } from '../types/current-user.type';
 
 @Injectable()
@@ -211,22 +211,44 @@ export abstract class AbstractService<
     query: QueryDto<Entity>,
     currentUser?: CurrentUser,
     session?: ClientSession,
-  ): Promise<PaginatedResponseDto<HydratedDocument<Entity>>> {
+  ): Promise<PaginatedResponseDto<Entity>> {
     return this.transactionManager.withTransaction(session, async (session) => {
-      const queryResult = buildQuery(query);
-      const { data, pagination } = await executePaginatedQuery(
-        this.model,
-        queryResult,
-        session,
-        {
-          select: query.select as string[],
-          populator: query.select ? undefined : this.populator,
-        },
-      );
+      const { mongoQuery, sortOptions, skip, limit } = buildQuery(query);
+
+      const pipeline: PipelineStage[] = [
+        { $match: mongoQuery as Record<string, unknown> },
+        ...this.buildLookupPipeline(),
+        ...this.buildVirtualsPipeline(),
+      ];
+
+      if (query.select) {
+        const fields = Array.isArray(query.select)
+          ? query.select
+          : (query.select as string).split(' ').filter(Boolean);
+        const projection: Record<string, 1> = {};
+        for (const field of fields) {
+          projection[field] = 1;
+        }
+        pipeline.push({ $project: projection } as PipelineStage);
+      }
+
+      pipeline.push({ $sort: sortOptions } as PipelineStage);
+      pipeline.push({ $skip: skip } as PipelineStage);
+      pipeline.push({ $limit: limit } as PipelineStage);
+
+      const [data, total] = await Promise.all([
+        this.model.aggregate(pipeline).session(session),
+        this.model.countDocuments(mongoQuery).session(session),
+      ]);
 
       return {
-        data: data as HydratedDocument<Entity>[],
-        pagination,
+        data: data as Entity[],
+        pagination: {
+          total,
+          page: Math.floor(skip / limit) + 1,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
       };
     });
   }
