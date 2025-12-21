@@ -11,6 +11,7 @@ import {
   Types,
   PopulateOptions,
   HydratedDocument,
+  PipelineStage,
 } from 'mongoose';
 
 /**
@@ -81,6 +82,81 @@ export abstract class AbstractService<
    */
   protected get modelName(): string {
     return this.model.modelName;
+  }
+
+  /**
+   * Convert populator config to MongoDB $lookup aggregation stages.
+   * More efficient than Mongoose populate as it runs in a single query.
+   */
+  protected buildLookupPipeline(): PipelineStage[] {
+    const pipeline: PipelineStage[] = [];
+
+    for (const pop of this.populator) {
+      const path = pop.path;
+      const collection = pop.collection;
+      const select = pop.select as string | undefined;
+
+      if (select) {
+        const projection = this.parseSelectToProjection(select);
+        pipeline.push({
+          $lookup: {
+            from: collection,
+            let: { localId: `$${path}` },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$_id', '$$localId'] } } },
+              { $project: projection },
+            ],
+            as: path,
+          },
+        });
+      } else {
+        pipeline.push({
+          $lookup: {
+            from: collection,
+            localField: path,
+            foreignField: '_id',
+            as: path,
+          },
+        });
+      }
+
+      pipeline.push({
+        $unwind: {
+          path: `$${path}`,
+          preserveNullAndEmptyArrays: true,
+        },
+      });
+    }
+
+    return pipeline;
+  }
+
+  /**
+   * Parse Mongoose-style select string into MongoDB projection object.
+   */
+  private parseSelectToProjection(
+    select: string,
+  ): Record<string, 0 | 1 | boolean> {
+    const fields = select.split(/\s+/).filter(Boolean);
+    const projection: Record<string, 0 | 1 | boolean> = {};
+
+    for (const field of fields) {
+      if (field.startsWith('-')) {
+        projection[field.slice(1)] = 0;
+      } else {
+        projection[field] = 1;
+      }
+    }
+
+    return projection;
+  }
+
+  /**
+   * Build pipeline stages for computed virtuals.
+   * Override in subclasses to add $addFields stages.
+   */
+  protected buildVirtualsPipeline(): PipelineStage[] {
+    return [];
   }
 
   async create(
