@@ -328,7 +328,7 @@ export abstract class AbstractService<
     update: Partial<Entity> & Record<string, unknown>,
     currentUser?: CurrentUser,
     session?: ClientSession,
-  ): Promise<HydratedDocument<Entity> | null> {
+  ): Promise<Entity | null> {
     const entity = await this.model.findById(id).session(session ?? null);
 
     if (!entity) {
@@ -338,9 +338,16 @@ export abstract class AbstractService<
     const targetModel = this.resolveDiscriminatorModel(entity);
 
     return this.transactionManager.withTransaction(session, async (session) => {
-      return targetModel
-        .findByIdAndUpdate(id, update, { new: true, session })
-        .populate(this.populator);
+      const updated = await targetModel.findByIdAndUpdate(id, update, {
+        new: true,
+        session,
+      });
+
+      if (!updated) {
+        return null;
+      }
+
+      return this.findOneWithLookup(updated._id, session);
     });
   }
 
