@@ -83,12 +83,19 @@ export class UserController {
           this.logger.debug(`Unhandled Logto webhook event: ${payload.event}`);
       }
     } catch (error) {
+      // Handle idempotent operations and expected failures
+      // Return 200 to prevent webhook retries, but log at WARN level for monitoring
       if (
         error instanceof ConflictException ||
         error instanceof NotFoundException
       ) {
-        this.logger.debug(
-          `Webhook event ${payload.event} for user ${logtoUserId}: ${error.message}`,
+        this.logger.warn(
+          `Webhook event ${payload.event} for user ${logtoUserId} failed: ${error.message}`,
+          {
+            event: payload.event,
+            logtoUserId,
+            errorType: error.constructor.name,
+          },
         );
         return;
       }

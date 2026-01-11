@@ -123,6 +123,52 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
     };
   }
 
+  /**
+   * Common HTTP request handler to eliminate code duplication.
+   * Handles API calls, error checking, and logging consistently.
+   */
+  private async executeApiCall<TResponse>(
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH',
+    path: string,
+    options?: {
+      params?: {
+        path?: Record<string, string>;
+        query?: Record<string, unknown>;
+      };
+      body?: unknown;
+    },
+  ): Promise<TResponse> {
+    this.assertEnabled();
+
+    try {
+      const apiMethod = this.apiClient![method] as LogtoApiMethod;
+      const response = await apiMethod<TResponse>(path, options);
+
+      // For GET and POST, check if data exists
+      if ((method === 'GET' || method === 'POST') && !response.data) {
+        this.logger.error(`${method} ${path} failed`, response.error);
+        throw new InternalServerErrorException(
+          response.error?.message ?? 'Unknown error',
+          `${method} ${path} failed`,
+        );
+      }
+
+      // For PUT and PATCH, check response status
+      if ((method === 'PUT' || method === 'PATCH') && !response.response.ok) {
+        this.logger.error(`${method} ${path} failed`, response.error);
+        throw new InternalServerErrorException(
+          response.error?.message ?? 'Unknown error',
+          `${method} ${path} failed`,
+        );
+      }
+
+      return response.data as TResponse;
+    } catch (error) {
+      this.logger.error(`${method} ${path} failed`, error);
+      throw error;
+    }
+  }
+
   protected async get<TResponse>(
     path: string,
     options?: {
@@ -132,24 +178,7 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       };
     },
   ): Promise<TResponse> {
-    this.assertEnabled();
-    try {
-      const apiGet = this.apiClient!.GET as LogtoApiMethod;
-      const response = await apiGet<TResponse>(path, options);
-
-      if (!response.data) {
-        this.logger.error(`GET ${path} failed`, response.error);
-        throw new InternalServerErrorException(
-          response.error?.message ?? 'Unknown error',
-          `GET ${path} failed`,
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      this.logger.error(`GET ${path} failed`, error);
-      throw error;
-    }
+    return this.executeApiCall<TResponse>('GET', path, options);
   }
 
   protected async post<TResponse>(
@@ -159,24 +188,7 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       body?: unknown;
     },
   ): Promise<TResponse> {
-    this.assertEnabled();
-    try {
-      const apiPost = this.apiClient!.POST as LogtoApiMethod;
-      const response = await apiPost<TResponse>(path, options);
-
-      if (!response.data) {
-        this.logger.error(`POST ${path} failed`, response.error);
-        throw new InternalServerErrorException(
-          response.error?.message ?? 'Unknown error',
-          `POST ${path} failed`,
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      this.logger.error(`POST ${path} failed`, error);
-      throw error;
-    }
+    return this.executeApiCall<TResponse>('POST', path, options);
   }
 
   protected async put<TResponse>(
@@ -186,24 +198,7 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       body?: unknown;
     },
   ): Promise<TResponse> {
-    this.assertEnabled();
-    try {
-      const apiPut = this.apiClient!.PUT as LogtoApiMethod;
-      const response = await apiPut<TResponse>(path, options);
-
-      if (!response.response.ok) {
-        this.logger.error(`PUT ${path} failed`, response.error);
-        throw new InternalServerErrorException(
-          response.error?.message ?? 'Unknown error',
-          `PUT ${path} failed`,
-        );
-      }
-
-      return response.data as TResponse;
-    } catch (error) {
-      this.logger.error(`PUT ${path} failed`, error);
-      throw error;
-    }
+    return this.executeApiCall<TResponse>('PUT', path, options);
   }
 
   protected async patch<TResponse>(
@@ -213,24 +208,7 @@ export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
       body?: unknown;
     },
   ): Promise<TResponse> {
-    this.assertEnabled();
-    try {
-      const apiPatch = this.apiClient!.PATCH as LogtoApiMethod;
-      const response = await apiPatch<TResponse>(path, options);
-
-      if (!response.response.ok) {
-        this.logger.error(`PATCH ${path} failed`, response.error);
-        throw new InternalServerErrorException(
-          response.error?.message ?? 'Unknown error',
-          `PATCH ${path} failed`,
-        );
-      }
-
-      return response.data as TResponse;
-    } catch (error) {
-      this.logger.error(`PATCH ${path} failed`, error);
-      throw error;
-    }
+    return this.executeApiCall<TResponse>('PATCH', path, options);
   }
 
   protected async delete(
