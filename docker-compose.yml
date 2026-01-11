@@ -106,7 +106,7 @@ services:
 
   # PostgreSQL for Logto
   nest-starter-postgres-dev:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: nest-starter-postgres-dev
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
