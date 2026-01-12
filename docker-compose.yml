@@ -17,8 +17,73 @@ services:
         reservations:
           memory: 128M
     command: mongod --wiredTigerCacheSizeGB 1 --auth --replSet rs0 --keyFile /etc/mongo-keyfile --bind_ip 127.0.0.1,nest-starter-mongodb-dev
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     env_file:
       - ./.env.local
+
+  nest-starter-mongodb-init:
+    image: mongo:8
+    restart: "no"
+    depends_on:
+      nest-starter-mongodb-dev:
+        condition: service_healthy
+    env_file:
+      - ./.env.local
+    networks:
+      - nest-starter-network
+    entrypoint:
+      - bash
+      - -c
+      - |
+        echo "Waiting 25 seconds for everything to settle..."
+        sleep 25
+
+        echo "Initializing replica set with authentication..."
+        mongosh --host nest-starter-mongodb-dev:27017 \
+                -u "${MONGODB_USER}" \
+                -p "${MONGODB_PASSWORD}" \
+                --authenticationDatabase admin \
+                --quiet \
+                --eval '
+          let needsInit = false;
+
+          try {
+            const status = rs.status();
+            if (status.ok === 1) {
+              print("Replica set already initialized");
+              printjson(status);
+            } else {
+              needsInit = true;
+            }
+          } catch(e) {
+            if (e.message.includes("no replset config")) {
+              print("No replica set config found, initializing...");
+              needsInit = true;
+            } else {
+              print("Error checking replica set status: " + e.message);
+              throw e;
+            }
+          }
+
+          if (needsInit) {
+            print("Initializing replica set...");
+            const result = rs.initiate();
+            printjson(result);
+
+            print("Waiting for primary election...");
+            sleep(5000);
+
+            print("Final replica set status:");
+            printjson(rs.status());
+          }
+        '
+
+        echo "Replica set initialization complete!"
 
   nest-starter-redis-dev:
     image: redis:8-alpine
