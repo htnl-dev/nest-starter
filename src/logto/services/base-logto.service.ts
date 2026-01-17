@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Logger,
   Inject,
   InternalServerErrorException,
 } from '@nestjs/common';
@@ -8,6 +7,7 @@ import {
   createManagementApi,
   type CreateManagementApiOptions,
 } from '@logto/api/management';
+import { ContextLogger } from '../../common/tracing';
 import {
   LogtoListResponse,
   LogtoQueryParams,
@@ -38,7 +38,7 @@ type LogtoApiMethod = <T>(
 export abstract class BaseLogtoService<T, CreateDto, UpdateDto>
   implements IBaseLogtoService<T, CreateDto, UpdateDto>
 {
-  protected readonly logger = new Logger(this.constructor.name);
+  protected readonly logger = new ContextLogger(this.constructor.name);
   protected apiClient:
     | ReturnType<typeof createManagementApi>['apiClient']
     | null = null;

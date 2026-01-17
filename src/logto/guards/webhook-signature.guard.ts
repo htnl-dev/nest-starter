@@ -4,10 +4,10 @@ import {
   ExecutionContext,
   UnauthorizedException,
   Inject,
-  Logger,
 } from '@nestjs/common';
 import { createHmac } from 'crypto';
 import type { Request } from 'express';
+import { ContextLogger } from '../../common/tracing';
 import type { LogtoConfig } from '../interfaces/logto-config.interface';
 
 interface RequestWithRawBody extends Request {
@@ -16,7 +16,7 @@ interface RequestWithRawBody extends Request {
 
 @Injectable()
 export class WebhookSignatureGuard implements CanActivate {
-  private readonly logger = new Logger(WebhookSignatureGuard.name);
+  private readonly logger = new ContextLogger(WebhookSignatureGuard.name);
 
   constructor(@Inject('LOGTO_CONFIG') private readonly config: LogtoConfig) {}
 

@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
+import { ContextLogger } from '../../common/tracing';
 import { AbstractSeeder, SeederResult } from './abstract.seeder';
 
 export const SEEDERS = Symbol('SEEDERS');
@@ -22,7 +23,7 @@ export interface SeederRunResult {
 
 @Injectable()
 export class SeederService {
-  private readonly logger = new Logger(SeederService.name);
+  private readonly logger = new ContextLogger(SeederService.name);
   private seeders: AbstractSeeder[] = [];
 
   constructor(private readonly moduleRef: ModuleRef) {}

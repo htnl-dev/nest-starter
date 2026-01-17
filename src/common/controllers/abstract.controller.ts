@@ -7,8 +7,8 @@ import {
   Param,
   Delete,
   Query,
-  Logger,
 } from '@nestjs/common';
+import { ContextLogger } from '../tracing';
 import { AbstractService } from '../services/abstract.service';
 import { AbstractCreateDto } from '../dto/abstract-create.dto';
 import { AbstractUpdateDto } from '../dto/abstract-update.dto';
@@ -23,7 +23,7 @@ export abstract class AbstractController<
   CreateDto extends AbstractCreateDto = AbstractCreateDto,
   UpdateDto extends object = AbstractUpdateDto,
 > {
-  protected readonly logger = new Logger();
+  protected readonly logger = new ContextLogger(this.constructor.name);
 
   constructor(
     protected readonly service: AbstractService<Entity, CreateDto, UpdateDto>,

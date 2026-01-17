@@ -1,5 +1,6 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ContextLogger } from '../tracing';
 import Redis from 'ioredis';
 import { CacheOptions } from '../types/cache.types';
 
@@ -7,7 +8,7 @@ export type { CacheOptions } from '../types/cache.types';
 
 @Injectable()
 export class CacheService implements OnModuleDestroy {
-  private readonly logger = new Logger(CacheService.name);
+  private readonly logger = new ContextLogger(CacheService.name);
   private readonly client: Redis | null = null;
   private readonly defaultTtl: number;
 

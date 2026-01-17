@@ -8,7 +8,6 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
-  Logger,
   UseGuards,
   ConflictException,
   NotFoundException,
@@ -19,13 +18,14 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { LogtoWebhookPayload } from './dto/logto-webhook.dto';
 import { GetCurrentUser } from '../logto/decorators/current-user.decorator';
 import { Public } from '../logto/decorators/public.decorator';
+import { ContextLogger } from '../common/tracing';
 import { WebhookSignatureGuard } from '../logto/guards/webhook-signature.guard';
 import type { CurrentUser } from './types/user.types';
 
 @ApiTags('users')
 @Controller('users')
 export class UserController {
-  private readonly logger = new Logger(UserController.name);
+  private readonly logger = new ContextLogger(UserController.name);
 
   constructor(private readonly userService: UserService) {}
 

@@ -1,9 +1,9 @@
 import {
   Injectable,
-  Logger,
   NotFoundException,
   OnApplicationShutdown,
 } from '@nestjs/common';
+import { ContextLogger } from '../tracing';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   type ClientSession,
@@ -42,7 +42,7 @@ export abstract class AbstractService<
   UpdateDto extends object = AbstractUpdateDto,
 > implements OnApplicationShutdown
 {
-  protected readonly logger = new Logger(this.constructor.name);
+  protected readonly logger = new ContextLogger(this.constructor.name);
 
   constructor(
     @InjectModel(AbstractEntity.name) protected readonly model: Model<Entity>,

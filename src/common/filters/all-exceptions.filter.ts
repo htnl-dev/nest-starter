@@ -4,9 +4,9 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { ContextLogger } from '../tracing';
 
 interface ErrorResponse {
   statusCode: number;
@@ -18,7 +18,7 @@ interface ErrorResponse {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger(AllExceptionsFilter.name);
+  private readonly logger = new ContextLogger(AllExceptionsFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();

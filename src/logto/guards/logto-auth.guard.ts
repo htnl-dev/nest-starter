@@ -4,9 +4,9 @@ import {
   ExecutionContext,
   UnauthorizedException,
   Inject,
-  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ContextLogger } from '../../common/tracing';
 import { TokenValidator } from '../utils/token-validation.util';
 import type {
   TokenValidationOptions,
@@ -20,7 +20,7 @@ import { LogtoUsersService } from '../services/users.service';
 
 @Injectable()
 export class LogtoAuthGuard implements CanActivate {
-  private readonly logger = new Logger(LogtoAuthGuard.name);
+  private readonly logger = new ContextLogger(LogtoAuthGuard.name);
   private tokenValidator: TokenValidator;
 
   constructor(

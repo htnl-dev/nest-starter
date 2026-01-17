@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { ContextLogger } from '../../common/tracing';
 
 export interface SeederResult {
   created: number;
@@ -8,7 +8,7 @@ export interface SeederResult {
 }
 
 export abstract class AbstractSeeder {
-  protected readonly logger = new Logger(this.constructor.name);
+  protected readonly logger = new ContextLogger(this.constructor.name);
 
   /** Unique name for this seeder */
   abstract readonly name: string;

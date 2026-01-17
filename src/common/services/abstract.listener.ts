@@ -1,12 +1,14 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { ClsServiceManager } from 'nestjs-cls';
+import { ContextLogger, CORRELATION_ID_KEY } from '../tracing';
 import { EnqueueJobOptions } from '../types/queue.types';
 
 export type { EnqueueJobOptions } from '../types/queue.types';
 
 @Injectable()
 export abstract class AbstractListener {
-  protected readonly logger = new Logger(this.constructor.name);
+  protected readonly logger = new ContextLogger(this.constructor.name);
 
   constructor(protected readonly queue: Queue) {}
 
@@ -57,7 +59,14 @@ export abstract class AbstractListener {
     const defaultJobName = `process-${queueName.replace('-queue', '')}`;
     const finalJobName = jobName || defaultJobName;
 
-    await this.queue.add(finalJobName, data, {
+    // Auto-inject correlation ID from CLS context
+    const cls = ClsServiceManager.getClsService();
+    const correlationId = cls.get<string | undefined>(CORRELATION_ID_KEY);
+    const enrichedData = correlationId
+      ? { ...data, [CORRELATION_ID_KEY]: correlationId }
+      : data;
+
+    await this.queue.add(finalJobName, enrichedData, {
       jobId,
       removeOnFail: false,
       removeOnComplete: true,

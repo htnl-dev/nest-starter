@@ -1,9 +1,6 @@
-import {
-  Injectable,
-  Logger,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
+import { ContextLogger } from '../tracing';
 import { Connection, ClientSession } from 'mongoose';
 import { MongoServerError } from 'mongodb';
 import {
@@ -17,7 +14,7 @@ import {
 
 @Injectable()
 export class TransactionManager {
-  private readonly logger = new Logger(TransactionManager.name);
+  private readonly logger = new ContextLogger(TransactionManager.name);
   private readonly maxRetries = 3;
   private readonly baseRetryDelayMs = 20;
 
