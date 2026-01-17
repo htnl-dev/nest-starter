@@ -8,6 +8,7 @@ import { CommonModule } from './common/common.module';
 import { UserModule } from './user/user.module';
 import { LogtoModule } from './logto/logto.module';
 import { HealthModule } from './health/health.module';
+import { TracingModule } from './common/tracing';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HealthModule } from './health/health.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    TracingModule,
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
